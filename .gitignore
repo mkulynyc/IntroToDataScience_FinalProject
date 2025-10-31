@@ -1,0 +1,33 @@
+# Jupyter Notebook
+**.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Python
+cython_debug/
+*__pycache__/
+*.py[cod]
+
+# data
+data
+*.zip
+*.csv
+*.db
+*.graphml
+# *.pickle
+
+# notebooks
+*scratch.ipynb
+# *.ipynb
+
+# OS
+**.DS_Store
+*.idea
+.vscode
+
+# project
+.env
+.streamlit
+environment.yml
