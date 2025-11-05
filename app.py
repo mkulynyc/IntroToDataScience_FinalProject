@@ -36,7 +36,7 @@ df_imdb_ready = df_imdb_ready.rename(columns={
 ### Sidebar for user inputs
 st.sidebar.header("🔍 Filter Options")
 keywords_input = st.sidebar.text_input("Keywords (comma-separated)", value="school")
-selected_genres = st.sidebar.multiselect("Genres", options=sorted(set(g for sublist in df_ready['genres_list'] for g in sublist)))
+selected_genres = st.sidebar.multiselect("Genres", options=sorted(set(g for sublist in df_imdb_ready['genres_list'] for g in sublist)))
 keyword_mode = st.sidebar.radio("Keyword Match Mode", ["any", "all"])
 genre_mode = st.sidebar.radio("Genre Match Mode", ["any", "all"])
 top_n = st.sidebar.slider("Number of Recommendations", 1, 20, 10)
@@ -45,7 +45,7 @@ top_n = st.sidebar.slider("Number of Recommendations", 1, 20, 10)
 st.header("🎯 Recommended Movies")
 if st.sidebar.button("Run Recommender"):
     keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
-    results = run_recommender(df_ready, keywords, selected_genres, top_n, keyword_mode, genre_mode)
+    results = run_recommender(df_imdb_ready, keywords, selected_genres, top_n, keyword_mode, genre_mode)
     if results.empty:
         st.warning("No matches found.")
     else:
@@ -54,14 +54,14 @@ if st.sidebar.button("Run Recommender"):
 
 ### Visualizations
 st.header("📊 Ratings Over Time")
-plot_rating_counts_by_year(df_ready)
-show_rating_table(df_ready)
+plot_rating_counts_by_year(df_imdb_ready)
+show_rating_table(df_imdb_ready)
 
 st.header("🌍 Top Genres by Country")
 country = st.text_input("Country", value="United States")
-plot_top_genres_by_country(df_ready, country)
+plot_top_genres_by_country(df_imdb_ready, country)
 
 st.header("🎬 Actor Timeline")
 actor_name = st.text_input("Actor Name", value="Liam Neeson")
 if actor_name:
-    plot_actor_timeline(df_ready, actor_name)
+    plot_actor_timeline(df_imdb_ready, actor_name)
