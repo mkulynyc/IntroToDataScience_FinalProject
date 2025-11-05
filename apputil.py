@@ -149,6 +149,7 @@ def load_imdb_cleaned(file_path="data/imdb_movies_cleaned.csv"):
     return df
 
 
+
 '''
 Movie Search/Recommender Engine based on keywords and genres
 '''
