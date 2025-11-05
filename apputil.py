@@ -318,7 +318,10 @@ def plot_actor_timeline(df, actor_name):
     df_actor = df[df['cast'].str.contains(actor_name, na=False)].copy()
     df_actor = df_actor.sort_values("release_year")
 
-    df_actor["start"] = pd.to_datetime(df_actor["release_year"], format="%Y", errors="coerce")
+    df_actor["start"] = pd.to_datetime(
+        df_actor["release_year"].apply(lambda x: str(int(float(x))) if pd.notna(x) else None),
+        format="%Y", errors="coerce"
+    )
     df_actor = df_actor.dropna(subset=["start"])
     df_actor["end"] = df_actor["start"] + pd.DateOffset(months=6)
 
