@@ -14,13 +14,16 @@ df_netflix_raw = load_data()
 df_netflix_clean, _ = cleanNetflixData(df_netflix_raw)
 df_netflix_movies = movies_only(df_netflix_clean)
 
-# Merge genres from Netflix into IMDb
+# Merge genres and descriptions from Netflix into IMDb
 df_imdb_enriched = df_imdb.merge(
-    df_netflix_movies[["title", "genres"]],
+    df_netflix_movies[["title", "genres", "description"]],
     how="left",
     left_on="primaryTitle",
     right_on="title"
 )
+
+# Drop the redundant Netflix title column
+df_imdb_enriched = df_imdb_enriched.drop(columns=["title"])
 
 # Drop the redundant Netflix title column
 df_imdb_enriched = df_imdb_enriched.drop(columns=["title"])
