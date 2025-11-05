@@ -6,8 +6,32 @@ st.set_page_config(page_title="🎬 Movie Recommender", layout="wide")
 # Load Netflix and IMDb data
 df_netflix_raw = load_data()
 df_netflix_clean, _ = cleanNetflixData(df_netflix_raw)
+# Load IMDb cleaned data
 df_imdb = load_imdb_cleaned()
-df_imdb_ready = add_genres_list(df_imdb)
+
+# Load and clean Netflix data
+df_netflix_raw = load_data()
+df_netflix_clean, _ = cleanNetflixData(df_netflix_raw)
+df_netflix_movies = movies_only(df_netflix_clean)
+
+# Merge genres from Netflix into IMDb
+df_imdb_enriched = df_imdb.merge(
+    df_netflix_movies[["title", "genres"]],
+    how="left",
+    left_on="primaryTitle",
+    right_on="title"
+)
+
+# Drop the redundant Netflix title column
+df_imdb_enriched = df_imdb_enriched.drop(columns=["title"])
+
+# Add genres_list for filtering
+df_imdb_ready = add_genres_list(df_imdb_enriched)
+# Rename for functions
+df_imdb_ready = df_imdb_ready.rename(columns={
+    "primaryTitle": "title",
+    "startYear": "release_year"
+})
 
 ### Sidebar for user inputs
 st.sidebar.header("🔍 Filter Options")
