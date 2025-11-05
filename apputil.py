@@ -177,7 +177,7 @@ def keyword_match(df, keywords, match_mode='any'):
     """
     if match_mode == 'all':
         return df[df['description'].apply(
-            lambda desc: all(re.search(re.escape(k), desc, re.IGNORECASE) for k in keywords)
+            lambda desc: all(re.search(re.escape(k), str(desc), re.IGNORECASE) for k in keywords)
         )]
     else:
         pattern = '|'.join([re.escape(k) for k in keywords])
