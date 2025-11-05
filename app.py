@@ -3,12 +3,11 @@ from apputil import *
 
 st.set_page_config(page_title="🎬 Movie Recommender", layout="wide")
 
-### Load and clean data
-df_raw = load_data()
-df_clean, _ = cleanNetflixData(df_raw)
-df_movies = movies_only(df_clean)
-df_rated = get_movies_with_ratings(df_movies)
-df_ready = add_genres_list(df_rated)
+# Load Netflix and IMDb data
+df_netflix_raw = load_data()
+df_netflix_clean, _ = cleanNetflixData(df_netflix_raw)
+df_imdb = load_imdb_cleaned()
+df_imdb_ready = add_genres_list(df_imdb)
 
 ### Sidebar for user inputs
 st.sidebar.header("🔍 Filter Options")
