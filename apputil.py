@@ -144,42 +144,9 @@ def movies_only(df):
     return df_movies
 
 ### Add user ratings
-### Adding ratings as function:
-def get_movies_with_ratings(df_movies, basics_path="data/title.basics.tsv", ratings_path="data/title.ratings.tsv"):
-    """
-    Filters to movies and merges with IMDb ratings from TSV files.
-    """
-    # Load IMDb basics and ratings
-    basics = pd.read_csv(
-        basics_path,
-        sep="\t",
-        na_values="\\N",
-        usecols=["tconst", "primaryTitle", "originalTitle", "startYear", "titleType"]
-    )
-    ratings = pd.read_csv(
-        ratings_path,
-        sep="\t",
-        na_values="\\N"
-    )
-
-    # Merge and filter to movies
-    imdb = basics.merge(ratings, on="tconst", how="inner")
-    imdb_movies = imdb[imdb['titleType'] == "movie"].copy()
-
-    # Merge with Netflix movies
-    movie_ratings_data = df_movies.merge(
-        imdb_movies,
-        how="inner",
-        left_on="title",
-        right_on="primaryTitle"
-    )
-
-    # Deduplicate by title, keeping highest numVotes 
-    movie_ratings_data_sorted = movie_ratings_data.sort_values(by='numVotes', ascending=False)
-    movie_ratings_data_deduped = movie_ratings_data_sorted.drop_duplicates(subset='title', keep='first')
-    movie_ratings_data_deduped = movie_ratings_data_deduped.reset_index(drop=True)
-
-    return movie_ratings_data_deduped
+def load_imdb_cleaned(file_path="data/imdb_movies_cleaned.csv"):
+    df = pd.read_csv(file_path)
+    return df
 
 
 '''
