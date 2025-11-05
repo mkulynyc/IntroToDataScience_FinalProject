@@ -11,11 +11,11 @@ cython_debug/
 *.py[cod]
 
 # data
-data
-*.zip
-*.csv
-*.db
-*.graphml
+#data
+#*.zip
+#*.csv
+#*.db
+#*.graphml
 # *.pickle
 
 # notebooks
