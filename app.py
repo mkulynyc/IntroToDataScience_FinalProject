@@ -25,9 +25,6 @@ df_imdb_enriched = df_imdb.merge(
 # Drop the redundant Netflix title column
 df_imdb_enriched = df_imdb_enriched.drop(columns=["title"])
 
-# Drop the redundant Netflix title column
-df_imdb_enriched = df_imdb_enriched.drop(columns=["title"])
-
 # Add genres_list for filtering
 df_imdb_ready = add_genres_list(df_imdb_enriched)
 # Rename for functions
