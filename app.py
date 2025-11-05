@@ -38,6 +38,8 @@ df_imdb_ready = df_imdb_ready.rename(columns={
     "startYear": "release_year"
 })
 
+# Setting up visual
+
 ### Sidebar for user inputs
 st.sidebar.header("🔍 Filter Options")
 keywords_input = st.sidebar.text_input("Keywords (comma-separated)", value="school")
