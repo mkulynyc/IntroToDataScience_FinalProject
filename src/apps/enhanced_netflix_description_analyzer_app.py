@@ -23,20 +23,18 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # Ensure repository modules import correctly
 current_dir = Path(__file__).parent.resolve()
-repo_root = current_dir.parent.parent.parent.resolve()
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
+src_dir = current_dir.parent  # Go up to src/
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
 # Import local analysis helpers
 try:
-    from enhanced_nlp_description_analyzer import (
+    from analyzers.enhanced_nlp_description_analyzer import (
         generate_ai_summary,
         extract_global_keywords,
         enrich_netflix_with_enhanced_description_analysis,
     )
-    from shared_utils import analyze_emotion, analyze_readability, count_words
+    from utils.shared_utils import analyze_emotion, analyze_readability, count_words
 except Exception as exc:
     # Handle import errors gracefully when running syntax checks
     pass
@@ -90,6 +88,8 @@ def main():
 
     # Sidebar controls and data loading
     st.sidebar.title("Analysis Options")
+    # Navigate from src/apps/ up to project root, then into data/
+    repo_root = Path(__file__).parent.parent.parent
     data_dir = repo_root / "data"
     enhanced_file = data_dir / "netflix_with_enhanced_description_analysis.csv"
 

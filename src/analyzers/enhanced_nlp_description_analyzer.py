@@ -13,9 +13,9 @@ import re
 import sys
 import os
 
-# Import shared utilities from parent directory
+# Import shared utilities from utils directory
 sys.path.append(str(Path(__file__).parent.parent))
-from shared_utils import analyze_emotion, analyze_readability, count_words
+from utils.shared_utils import analyze_emotion, analyze_readability, count_words
 
 # Initialize transformers pipeline for summarization
 summarizer = None
