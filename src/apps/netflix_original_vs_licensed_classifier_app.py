@@ -30,10 +30,12 @@ warnings.filterwarnings('ignore', category=UserWarning)
 logging.getLogger('transformers').setLevel(logging.ERROR)
 
 # Import our classifier - this has the actual classification logic
+import sys
+sys.path.append(str(Path(__file__).parent.parent))
 try:
-    from netflix_original_vs_licensed_classifier import NetflixContentClassifier
+    from analyzers.netflix_original_vs_licensed_classifier import NetflixContentClassifier
 except ImportError:
-    st.error("Could not import NetflixContentClassifier. Make sure netflix_original_vs_licensed_classifier.py is in the same folder.")
+    st.error("Could not import NetflixContentClassifier. Make sure netflix_original_vs_licensed_classifier.py is in the analyzers folder.")
     st.stop()
 
 # Some constants to make the code cleaner
