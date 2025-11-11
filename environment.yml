@@ -1,0 +1,21 @@
+name: netflixv1
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - plotly
+  - scikit-learn
+  - scipy
+  - jupyter
+  - pip
+  - pip:
+    - streamlit
+    - sentence-transformers
+    - statsmodels
+    - geopandas
+    - watchdog

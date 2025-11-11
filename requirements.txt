@@ -1,0 +1,13 @@
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+scikit-learn
+scipy
+statsmodels
+sentence-transformers
+geopandas
+streamlit
+jupyter
+watchdog
