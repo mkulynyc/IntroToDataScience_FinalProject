@@ -13,3 +13,14 @@ pycountry
 spacy
 tqdm
 vaderSentiement
+pandas
+numpy
+scikit-learn
+streamlit
+textblob
+textstat
+transformers
+torch
+matplotlib
+seaborn
+plotly
