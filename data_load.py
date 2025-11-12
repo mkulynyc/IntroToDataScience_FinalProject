@@ -147,10 +147,5 @@ def add_genres_list(df):
         lambda x: x if isinstance(x, list) else [g.strip() for g in str(x).split(',') if g.strip()]
     )
     df['genres_list'] = genre_lists
-
-    unique_genres = sorted(set(g for sublist in genre_lists for g in sublist))
-    st.markdown("### 🎬 Unique Genres")
-    st.markdown(", ".join(unique_genres))
-
     return df
 
