@@ -9,13 +9,13 @@ from tabulate import tabulate
 import plotly.express as px
 
 ### Styled table of movie/tv show ratings
-def show_rating_table(df, year = 2016, label = "Movies and TV Shows"):
+def show_rating_table(df, year=2016, label="Movies and TV Shows"):
     df_ratings = df.dropna(subset=['release_year', 'rating'])
     df_ratings = df_ratings[df_ratings['release_year'] >= year]
 
     rating_counts = df_ratings.groupby(['release_year', 'rating']).size().unstack(fill_value=0)
     styled_table = rating_counts.style.background_gradient(cmap='YlGnBu', axis=None)\
-                                       .set_caption(f"{label} Ratings Count per Year")                         
+                                       .set_caption(f"{label} Ratings Count per Year (Since {year})")
     st.dataframe(styled_table)
     
     

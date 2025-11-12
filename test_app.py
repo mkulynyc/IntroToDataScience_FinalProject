@@ -31,20 +31,23 @@ tab1, tab2 = st.tabs(["🎯 Recommender Engine", "📊 Visualizations"])
 with tab1:
     st.header("🎯 Movie & TV Show Recommender")
 
-    # Sidebar filters
-    st.sidebar.header("🔍 Filter Options")
-    keywords_input = st.sidebar.text_input("Keywords (comma-separated)", value="school")
-    selected_genres = st.sidebar.multiselect(
-        "Genres",
-        options=sorted(set(g for sublist in df_clean['genres_list'] for g in sublist if g))
-    )
-    keyword_mode = st.sidebar.radio("Keyword Match Mode", ["any", "all"])
-    genre_mode = st.sidebar.radio("Genre Match Mode", ["any", "all"])
-    top_n = st.sidebar.slider("Number of Recommendations", 1, 20, 10)
+    # Inline filters
+    col1, col2 = st.columns(2)
+    with col1:
+        keywords_input = st.text_input("Keywords (comma-separated)", value="school")
+        keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
+    with col2:
+        selected_genres = st.multiselect(
+            "Genres",
+            options=sorted(set(g for sublist in df_clean['genres_list'] for g in sublist if g))
+        )
+        genre_mode = st.radio("Genre Match Mode", ["any", "all"])
+
+    top_n = st.slider("Number of Recommendations", 1, 20, 10)
 
     # Run recommender
     st.subheader("Recommended Titles")
-    if st.sidebar.button("Run Recommender"):
+    if st.button("Run Recommender"):
         keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
         results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode)
         if results.empty:
