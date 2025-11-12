@@ -19,7 +19,6 @@ def show_rating_table(df, year = 2016, label = "Movies and TV Shows"):
     st.dataframe(styled_table)
     
     
-### Plotting top n genres by a user-defined country
 def plot_top_genres_by_country(df, country='United States', top_n=5):
     df_country = df[df['country'] == country].dropna(subset=['listed_in', 'release_year'])
     df_genres = df_country.assign(genre=df_country['listed_in'].str.split(', ')).explode('genre')
