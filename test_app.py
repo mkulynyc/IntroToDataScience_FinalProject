@@ -60,9 +60,10 @@ with tab1:
 with tab2:
     st.header("📊 Netflix Content Visualizations")
 
-    # Ratings table
-    st.subheader("🎬 Ratings Table (Since 2016)")
-    show_rating_table(df_clean)
+    # Ratings table with year slider
+    st.subheader("🎬 Ratings Table")
+    year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
+    show_rating_table(df_clean, year=year_cutoff)
 
     # Top genres by country
     st.subheader("🌍 Top Genres by Country Over Time")
