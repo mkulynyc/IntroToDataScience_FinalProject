@@ -9,7 +9,7 @@ from tabulate import tabulate
 import plotly.express as px
 
 # Function to load the data
-def load_data(file_path = "data/netflix_titles.csv"):
+def load_data(file_path = "old_data/netflix_titles.csv"):
     df = pd.read_csv(file_path)
     return df
 
