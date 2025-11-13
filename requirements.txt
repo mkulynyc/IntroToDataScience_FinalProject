@@ -24,3 +24,4 @@ torch
 matplotlib
 seaborn
 plotly
+tabulate
