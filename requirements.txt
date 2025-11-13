@@ -12,7 +12,7 @@ wordcloud
 pycountry
 spacy
 tqdm
-vaderSentiement
+vaderSentiment
 pandas
 numpy
 scikit-learn
