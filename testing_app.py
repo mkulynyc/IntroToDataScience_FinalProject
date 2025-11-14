@@ -382,42 +382,42 @@ with tabs[4]:
         ## New
         from fetch_tmdb_reviews_test import main as fetch_reviews
 
-if st.button("🔄 Fetch TMDB Reviews now", use_container_width=True):
-    try:
-        fetch_reviews(netflix_path=NETFLIX_PATH, output_path=REVIEWS_PATH, limit=300)
-        st.success("Reviews fetched and saved!")
-    except Exception as e:
-        st.error(f"Failed to fetch reviews: {e}")
-    with c2:
-        if st.button("⚙️ Enrich + Score now", use_container_width=True):
-            if not os.path.exists(NETFLIX_PATH):
-                st.error("Missing data/netflix_titles.csv.")
-            elif not os.path.exists(REVIEWS_PATH):
-                st.error("Missing data/reviews_raw.csv — fetch reviews first.")
-            else:
-                runScript(f'python "scripts/enrich_and_score.py" --netflix "{NETFLIX_PATH}" --reviews "{REVIEWS_PATH}" --output "{ENRICHED_PATH}" --spacyModel "{SPACY_MODEL_PATH}"')
-
-    st.markdown("---")
-    st.caption("Need to just score a small CSV on the fly? Upload it below (uses your trained spaCy model).")
-    up = st.file_uploader("Upload CSV with a 'text' column", type=["csv"])
-    
-    ### COMMENTING TO RUN
-    
-    '''
-    if up:
+    if st.button("🔄 Fetch TMDB Reviews now", use_container_width=True):
         try:
-            raw = pd.read_csv(up)
-            scored = scoreDataFrame(raw, textCol="text", spacyModelPath=SPACY_MODEL_PATH)
-            st.success("Scored! Preview below.")
-            st.dataframe(scored.head(100))
-            st.download_button("Download scored CSV",
-                               data=scored.to_csv(index=False).encode("utf-8"),
-                               file_name="scored.csv",
-                               use_container_width=True)
+            fetch_reviews(netflix_path=NETFLIX_PATH, output_path=REVIEWS_PATH, limit=300)
+            st.success("Reviews fetched and saved!")
         except Exception as e:
-            st.error(f"Scoring failed: {e}")
-    '''
- 
+            st.error(f"Failed to fetch reviews: {e}")
+        with c2:
+            if st.button("⚙️ Enrich + Score now", use_container_width=True):
+                if not os.path.exists(NETFLIX_PATH):
+                    st.error("Missing data/netflix_titles.csv.")
+                elif not os.path.exists(REVIEWS_PATH):
+                    st.error("Missing data/reviews_raw.csv — fetch reviews first.")
+                else:
+                    runScript(f'python "scripts/enrich_and_score.py" --netflix "{NETFLIX_PATH}" --reviews "{REVIEWS_PATH}" --output "{ENRICHED_PATH}" --spacyModel "{SPACY_MODEL_PATH}"')
+
+        st.markdown("---")
+        st.caption("Need to just score a small CSV on the fly? Upload it below (uses your trained spaCy model).")
+        up = st.file_uploader("Upload CSV with a 'text' column", type=["csv"])
+        
+        ### COMMENTING TO RUN
+        
+        '''
+        if up:
+            try:
+                raw = pd.read_csv(up)
+                scored = scoreDataFrame(raw, textCol="text", spacyModelPath=SPACY_MODEL_PATH)
+                st.success("Scored! Preview below.")
+                st.dataframe(scored.head(100))
+                st.download_button("Download scored CSV",
+                                data=scored.to_csv(index=False).encode("utf-8"),
+                                file_name="scored.csv",
+                                use_container_width=True)
+            except Exception as e:
+                st.error(f"Scoring failed: {e}")
+        '''
+    
 # ---------- Recommender Search Engine ---------- 
 with tabs[5]:
     # Load data
