@@ -13,6 +13,7 @@ from nlp.spacy_model import evaluateSpacy
 from plots import *
 from engine import *
 from data_load import *
+from src.utils.shared_utils import analyze_emotion, analyze_readability, count_words
 
 # =========================
 # Config & constants
@@ -179,7 +180,8 @@ tabs = st.tabs([
     "🧭 Title Explorer",
     "⚙️ Ingest & Score",
     "🎯 Recommender Engine",
-    "📊 Visualizations"
+    "📊 Visualizations", 
+     "🧠 Text Enrichment"
 ])
 
 # ---------- Overview ----------
@@ -467,3 +469,51 @@ with tabs[6]:
     country = st.text_input("Enter a country", value="United States")
     top_n = st.slider("Top N Genres", 3, 10, 5)
     plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
+    
+# ---------- Text Enrichment ----------
+with tabs[7]:
+    st.header("🧠 Text Enrichment Workbench")
+
+    df_raw = loadCsv(NETFLIX_PATH)
+    df_clean, _ = cleanNetflixData(df_raw)
+    df_clean = add_genres_list(df_clean)
+
+    if df_clean is None or df_clean.empty:
+        st.info("No Netflix data found.")
+    else:
+        st.subheader("Select a Movie or TV Show")
+
+        # Dropdown with autocomplete
+        title = st.selectbox(
+            "Choose a title",
+            options=sorted(df_clean["title"].dropna().unique()),
+            index=0,
+            placeholder="Start typing a title..."
+        )
+
+        # Get the row for the selected title
+        row = df_clean[df_clean["title"] == title].iloc[0]
+        description = row.get("description", "")
+
+        st.markdown("### Description")
+        st.text_area("Description", value=description, height=160)
+
+        if description:
+            # Run enrichment functions
+            emotion = analyze_emotion(description)
+            readability = analyze_readability(description)
+            word_count = count_words(description)
+
+            st.markdown("### Analysis Results")
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                st.metric("Sentiment", emotion['sentiment'])
+                st.caption(f"Polarity: {emotion['polarity']:.2f}, Subjectivity: {emotion['subjectivity']:.2f}")
+
+            with c2:
+                st.metric("Readability", readability['category'])
+                st.caption(f"Flesch Score: {readability['score']:.1f}")
+
+            with c3:
+                st.metric("Word Count", word_count)
