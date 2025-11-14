@@ -28,9 +28,11 @@ import traceback
 import sys
 from pathlib import Path
 current_dir = Path(__file__).parent
-sys.path.append(str(current_dir))
 
-from shared_utils import (
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir / "utils"))
+
+from src.utils.shared_utils import (
     analyze_emotion, 
     analyze_readability, 
     load_netflix_data,
