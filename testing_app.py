@@ -381,7 +381,6 @@ with tabs[4]:
     with c1:
         ## New
         from fetch_tmdb_reviews_test import main as fetch_reviews
-        from scripts.fetch_tmdb_reviews import main as fetch_reviews
 
 if st.button("🔄 Fetch TMDB Reviews now", use_container_width=True):
     try:
