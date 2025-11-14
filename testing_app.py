@@ -378,8 +378,8 @@ with tabs[4]:
     st.subheader("Ingest & Score")
     st.write("Run the end-to-end pipeline from within the UI, or use the sidebar buttons.")
 
-    from scripts.fetch_tmdb_reviews import main as fetch_reviews
-    from scripts.enrich_and_score import main as enrich_and_score
+    from fetch_tmdb_reviews_test import main as fetch_reviews
+    from enrich_and_score_test import main as enrich_and_score
 
     c1, c2 = st.columns(2)
 
