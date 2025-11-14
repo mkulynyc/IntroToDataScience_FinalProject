@@ -1,0 +1,58 @@
+﻿PATH: C:\git\NetflixMoviesAndTVShows\data\netflix_cleaned.csv
+SHAPE: (8806, 12)
+
+DTYPES:
+show_id         object
+type            object
+title           object
+director        object
+cast            object
+country         object
+date_added      object
+release_year     int64
+rating          object
+duration        object
+listed_in       object
+description     object
+dtype: object
+
+FIRST 10 ROWS:
+show_id    type                            title                      director                                                                                                                                                                                                                                                                                                            cast         country         date_added  release_year rating  duration                                                     listed_in                                                                                                                                               description
+     s1   Movie             Dick Johnson Is Dead               Kirsten Johnson                                                                                                                                                                                                                                                                                                    Unknown Cast   United States September 25, 2021          2020  PG-13    90 min                                                 Documentaries  As her father nears the end of his life, filmmaker Kirsten Johnson stages his death in inventive and comical ways to help them both face the inevitable.
+     s2 TV Show                    Blood & Water              Unknown Director Ama Qamata, Khosi Ngema, Gail Mabalane, Thabang Molaba, Dillon Windvogel, Natasha Thahane, Arno Greeff, Xolile Tshabalala, Getmore Sithole, Cindy Mahlangu, Ryle De Morny, Greteli Fincham, Sello Maake Ka-Ncube, Odwa Gwanya, Mekaila Mathys, Sandi Schultz, Duane Williams, Shamilla Miller, Patrick Mofokeng    South Africa September 24, 2021          2021  TV-MA 2 Seasons               International TV Shows, TV Dramas, TV Mysteries       After crossing paths at a party, a Cape Town teen sets out to prove whether a private-school swimming star is her sister who was abducted at birth.
+     s3 TV Show                        Ganglands               Julien Leclercq                                                                                                                                                             Sami Bouajila, Tracy Gotoas, Samuel Jouy, Nabiha Akkari, Sofia Lesaffre, Salim Kechiouche, Noureddine Farihi, Geert Van Rampelberg, Bakary Diombera Unknown Country September 24, 2021          2021  TV-MA  1 Season Crime TV Shows, International TV Shows, TV Action & Adventure        To protect his family from a powerful drug lord, skilled thief Mehdi and his expert team of robbers are pulled into a violent and deadly turf war.
+     s4 TV Show            Jailbirds New Orleans              Unknown Director                                                                                                                                                                                                                                                                                                    Unknown Cast Unknown Country September 24, 2021          2021  TV-MA  1 Season                                        Docuseries, Reality TV       Feuds, flirtations and toilet talk go down among the incarcerated women at the Orleans Justice Center in New Orleans on this gritty reality series.
+     s5 TV Show                     Kota Factory              Unknown Director                                                                                                                                                                                                        Mayur More, Jitendra Kumar, Ranjan Raj, Alam Khan, Ahsaas Channa, Revathi Pillai, Urvi Singh, Arun Kumar           India September 24, 2021          2021  TV-MA 2 Seasons        International TV Shows, Romantic TV Shows, TV Comedies  In a city of coaching centers known to train IndiaÆs finest collegiate minds, an earnest but unexceptional student and his friends navigate campus life.
+     s6 TV Show                    Midnight Mass                 Mike Flanagan                                                                        Kate Siegel, Zach Gilford, Hamish Linklater, Henry Thomas, Kristin Lehman, Samantha Sloyan, Igby Rigney, Rahul Kohli, Annarah Cymone, Annabeth Gish, Alex Essoe, Rahul Abburi, Matt Biedel, Michael Trucco, Crystal Balint, Louis Oliver Unknown Country September 24, 2021          2021  TV-MA  1 Season                            TV Dramas, TV Horror, TV Mysteries  The arrival of a charismatic young priest brings glorious miracles, ominous mysteries and renewed religious fervor to a dying town desperate to believe.
+     s7   Movie My Little Pony: A New Generation Robert Cullen, JosΘ Luis Ucha                                                                                                                                                               Vanessa Hudgens, Kimiko Glenn, James Marsden, Sofia Carson, Liza Koshy, Ken Jeong, Elizabeth Perkins, Jane Krakowski, Michael McKean, Phil LaMarr Unknown Country September 24, 2021          2021     PG    91 min                                      Children & Family Movies Equestria's divided. But a bright-eyed hero believes Earth Ponies, Pegasi and Unicorns should be pals ù and, hoof to heart, sheÆs determined to prove it.
+     s8   Movie                          Sankofa                  Haile Gerima                                                                                                                                                                                                 Kofi Ghanaba, Oyafunmike Ogunlano, Alexandra Duah, Nick Medley, Mutabaruka, Afemo Omilami, Reggie Carter, Mzuri   United States September 24, 2021          1993  TV-MA   125 min              Dramas, Independent Movies, International Movies   On a photo shoot in Ghana, an American model slips back in time, becomes enslaved on a plantation and bears witness to the agony of her ancestral past.
+     s9 TV Show    The Great British Baking Show               Andy Devonshire                                                                                                                                                                                                                                                           Mel Giedroyc, Sue Perkins, Mary Berry, Paul Hollywood  United Kingdom September 24, 2021          2021  TV-14 9 Seasons                                  British TV Shows, Reality TV          A talented batch of amateur bakers face off in a 10-week competition, whipping up their best dishes in the hopes of being named the U.K.'s best.
+    s10   Movie                     The Starling                Theodore Melfi                                                                                                                                          Melissa McCarthy, Chris O'Dowd, Kevin Kline, Timothy Olyphant, Daveed Diggs, Skyler Gisondo, Laura Harrier, Rosalind Chao, Kimberly Quinn, Loretta Devine, Ravi Kapoor   United States September 24, 2021          2021  PG-13   104 min                                              Comedies, Dramas   A woman adjusting to life after a loss contends with a feisty bird that's taken over her garden ù and a husband who's struggling to find a way forward.
+
+MISSING VALUES (per column):
+show_id         0
+type            0
+title           0
+director        0
+cast            0
+country         0
+date_added      0
+release_year    0
+rating          0
+duration        0
+listed_in       0
+description     0
+dtype: int64
+
+UNIQUE COUNTS (sample columns):
+  type: 2 unique (top 5): {'Movie': 6130, 'TV Show': 2676}
+  release_year: 74 unique (top 5): {2018: 1147, 2017: 1032, 2019: 1030, 2020: 953, 2016: 902}
+  rating: 18 unique (top 5): {'TV-MA': 3206, 'TV-14': 2160, 'TV-PG': 863, 'R': 799, 'PG-13': 490}
+  listed_in: 514 unique (top 5): {'Dramas, International Movies': 362, 'Documentaries': 359, 'Stand-Up Comedy': 334, 'Comedies, Dramas, International Movies': 274, 'Dramas, Independent Movies, International Movies': 252}
+  country: 132 unique (top 5): {'United States': 3690, 'India': 1000, 'Unknown Country': 831, 'United Kingdom': 529, 'Japan': 247}
+
+DESCRIPTIVE STATS (numeric):
+               count         mean       std  ...     50%     75%     max
+release_year  8806.0  2014.180218  8.819813  ...  2017.0  2019.0  2021.0
+
+[1 rows x 8 columns]

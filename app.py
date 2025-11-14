@@ -1,15 +1,18 @@
 import os
-import re
 import time
 from typing import List, Optional
 
 import pandas as pd
 import requests
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from textblob import TextBlob
-import textstat
+
+from nlp_utils import scoreDataFrame
+from nlp.spacy_model import evaluateSpacy
+from viz import plotVaderVsSpacy, plotLabelCounts
+
+from plots import *
+from engine import *
+from data_load import *
 
 # =========================
 # Config & constants
@@ -109,146 +112,6 @@ def badge(text: str, tone: str = "neutral"):
     )
 
 # =========================
-# Data processing functions
-# =========================
-def cleanNetflixData(df):
-    """Clean and prepare Netflix data."""
-    if df is None:
-        return None, "No data provided"
-    df_clean = df.copy()
-    # Basic cleaning
-    df_clean = df_clean.dropna(subset=['title'])
-    if 'date_added' in df_clean.columns:
-        df_clean['date_added'] = pd.to_datetime(df_clean['date_added'], errors='coerce')
-    if 'release_year' in df_clean.columns:
-        df_clean['release_year'] = pd.to_numeric(df_clean['release_year'], errors='coerce')
-    return df_clean, None
-
-def add_genres_list(df):
-    """Add a genres_list column from listed_in."""
-    if df is None:
-        return df
-    if "listed_in" in df.columns:
-        df["genres_list"] = df["listed_in"].fillna("").astype(str).apply(
-            lambda s: [g.strip() for g in s.split(",")] if s else []
-        )
-    else:
-        df["genres_list"] = [[] for _ in range(len(df))]
-    return df
-
-def run_recommender(df, keywords, genres, top_n=10, keyword_mode='any', genre_mode='any'):
-    """Simple recommender based on keywords and genres."""
-    if df is None or df.empty:
-        return pd.DataFrame()
-    
-    results = df.copy()
-    
-    # Filter by keywords in description
-    if keywords and 'description' in df.columns:
-        def match_keywords(desc):
-            if pd.isna(desc):
-                return False
-            desc_lower = str(desc).lower()
-            matches = [kw.lower() in desc_lower for kw in keywords]
-            return all(matches) if keyword_mode == 'all' else any(matches)
-        
-        results = results[results['description'].apply(match_keywords)]
-    
-    # Filter by genres
-    if genres and 'genres_list' in df.columns:
-        def match_genres(genre_list):
-            if not genre_list:
-                return False
-            matches = [g in genre_list for g in genres]
-            return all(matches) if genre_mode == 'all' else any(matches)
-        
-        results = results[results['genres_list'].apply(match_genres)]
-    
-    # Return top N
-    display_cols = ['title', 'type', 'release_year', 'rating', 'listed_in', 'description']
-    available_cols = [col for col in display_cols if col in results.columns]
-    return results[available_cols].head(top_n)
-
-def show_rating_table(df, year=2016):
-    """Display a table of ratings grouped by year."""
-    if df is None or df.empty:
-        st.warning("No data available")
-        return
-    
-    if 'rating' not in df.columns or 'release_year' not in df.columns:
-        st.warning("Missing required columns for ratings table")
-        return
-    
-    filtered = df[df['release_year'] >= year].copy()
-    if filtered.empty:
-        st.warning(f"No data for year >= {year}")
-        return
-    
-    rating_counts = filtered.groupby(['release_year', 'rating']).size().reset_index(name='count')
-    pivot_table = rating_counts.pivot(index='release_year', columns='rating', values='count').fillna(0)
-    st.dataframe(pivot_table, use_container_width=True)
-
-def plot_top_genres_by_country(df, country='United States', top_n=5):
-    """Plot top genres for a specific country over time."""
-    if df is None or df.empty:
-        st.warning("No data available")
-        return
-    
-    if 'country' not in df.columns or 'genres_list' not in df.columns:
-        st.warning("Missing required columns for genre analysis")
-        return
-    
-    # Filter by country
-    country_data = df[df['country'].fillna('').str.contains(country, case=False, na=False)].copy()
-    
-    if country_data.empty:
-        st.warning(f"No data found for {country}")
-        return
-    
-    # Count genres
-    from collections import Counter
-    all_genres = []
-    for genres in country_data['genres_list']:
-        all_genres.extend(genres)
-    
-    genre_counts = Counter(all_genres)
-    top_genres = [g for g, _ in genre_counts.most_common(top_n)]
-    
-    st.write(f"Top {top_n} genres in {country}:")
-    for i, (genre, count) in enumerate(genre_counts.most_common(top_n), 1):
-        st.write(f"{i}. {genre}: {count} titles")
-
-def plotVaderVsSpacy(df, textCol='nlp_text'):
-    """Create a scatter plot comparing VADER and spaCy sentiment."""
-    if 'vader_compound' not in df.columns or 'spacy_pos_prob' not in df.columns:
-        return go.Figure().add_annotation(text="Missing required columns", showarrow=False)
-    
-    fig = px.scatter(
-        df,
-        x='vader_compound',
-        y='spacy_pos_prob',
-        color='spacy_label',
-        hover_data=['title'] if 'title' in df.columns else None,
-        title='VADER vs spaCy Sentiment',
-        labels={'vader_compound': 'VADER Compound', 'spacy_pos_prob': 'spaCy Positive Prob'}
-    )
-    return fig
-
-def plotLabelCounts(df, which='spacy_label'):
-    """Create a bar chart of label counts."""
-    if which not in df.columns:
-        return go.Figure().add_annotation(text=f"Column {which} not found", showarrow=False)
-    
-    counts = df[which].value_counts()
-    fig = px.bar(
-        x=counts.index,
-        y=counts.values,
-        title=f'{which} Distribution',
-        labels={'x': 'Label', 'y': 'Count'}
-    )
-    return fig
-
-# =========================
 # Sidebar (pipeline actions)
 # =========================
 with st.sidebar:
@@ -256,6 +119,22 @@ with st.sidebar:
     st.caption("Fetch → Enrich/Score → Explore")
     fetch_btn = st.button("🔄 Fetch TMDB Reviews (append)", use_container_width=True)
     score_btn = st.button("⚙️ Enrich + Score (VADER + spaCy)", use_container_width=True)
+
+    st.markdown("---")
+    st.header("spaCy Evaluation")
+    if st.button("Run Eval on data/test_reviews.csv", use_container_width=True):
+        if os.path.exists("data/test_reviews.csv"):
+            try:
+                m = evaluateSpacy("data/test_reviews.csv", textCol="text", labelCol="label",
+                                  modelPath=SPACY_MODEL_PATH)
+                st.success(f"Accuracy: {m['accuracy']:.3f} | Macro-F1: {m['macro_f1']:.3f}")
+                with st.expander("Confusion matrix"):
+                    st.write("Labels:", m["confusion_matrix_labels"])
+                    st.write(m["confusion_matrix"])
+            except Exception as e:
+                st.error(f"Eval failed: {e}")
+        else:
+            st.warning("data/test_reviews.csv not found.")
 
     st.markdown("---")
     st.caption("Tip: set your TMDB API key in `.streamlit/secrets.toml` or TMDB_API_KEY env.")
@@ -300,8 +179,7 @@ tabs = st.tabs([
     "🧭 Title Explorer",
     "⚙️ Ingest & Score",
     "🎯 Recommender Engine",
-    "📊 Visualizations",
-    "📝 Description Analyzer"
+    "📊 Visualizations"
 ])
 
 # ---------- Overview ----------
@@ -503,56 +381,43 @@ with tabs[4]:
                 runScript(f'python "scripts/enrich_and_score.py" --netflix "{NETFLIX_PATH}" --reviews "{REVIEWS_PATH}" --output "{ENRICHED_PATH}" --spacyModel "{SPACY_MODEL_PATH}"')
 
     st.markdown("---")
-    st.caption("Need to just score a small CSV on the fly? Upload it below.")
+    st.caption("Need to just score a small CSV on the fly? Upload it below (uses your trained spaCy model).")
     up = st.file_uploader("Upload CSV with a 'text' column", type=["csv"])
     if up:
         try:
             raw = pd.read_csv(up)
-            if 'text' not in raw.columns:
-                st.error("CSV must have a 'text' column")
-            else:
-                # Simple sentiment scoring
-                raw['sentiment'] = raw['text'].apply(lambda x: TextBlob(str(x)).sentiment.polarity if pd.notna(x) else 0)
-                raw['sentiment_label'] = raw['sentiment'].apply(lambda x: 'POSITIVE' if x > 0.1 else ('NEGATIVE' if x < -0.1 else 'NEUTRAL'))
-                st.success("Scored! Preview below.")
-                st.dataframe(raw.head(100))
-                st.download_button("Download scored CSV",
-                                   data=raw.to_csv(index=False).encode("utf-8"),
-                                   file_name="scored.csv",
-                                   use_container_width=True)
+            scored = scoreDataFrame(raw, textCol="text", spacyModelPath=SPACY_MODEL_PATH)
+            st.success("Scored! Preview below.")
+            st.dataframe(scored.head(100))
+            st.download_button("Download scored CSV",
+                               data=scored.to_csv(index=False).encode("utf-8"),
+                               file_name="scored.csv",
+                               use_container_width=True)
         except Exception as e:
             st.error(f"Scoring failed: {e}")
-
+ 
 # ---------- Recommender Search Engine ---------- 
 with tabs[5]:
     # Load data
     df_raw = loadCsv(NETFLIX_PATH)
-    if df_raw is not None:
-        df_clean, _ = cleanNetflixData(df_raw)
-        df_clean = add_genres_list(df_clean)
-        
-        # Set up recommender engine on streamlit
-        st.subheader("Recommender Search Engine")
-        st.write("Write key words and select genres you are interested in, and choose if you want all or any of these in the search.")
-        
-        # Inline filters
-        col1, col2 = st.columns(2)
-        with col1:
-            keywords_input = st.text_input("Keywords (comma-separated)", value="school")
-            keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
-        with col2:
-            # Safe genre extraction
-            genre_options = []
-            if 'genres_list' in df_clean.columns:
-                for sublist in df_clean['genres_list']:
-                    if sublist:
-                        genre_options.extend([g for g in sublist if g])
-            
-            selected_genres = st.multiselect(
-                "Genres",
-                options=sorted(set(genre_options)) if genre_options else []
-            )
-            genre_mode = st.radio("Genre Match Mode", ["any", "all"])
+    df_clean, _ = cleanNetflixData(df_raw)
+    df_clean = add_genres_list(df_clean)
+    
+    # Set up recommender engine on streamlit
+    st.subheader("Recommender Search Engine")
+    st.write("Write key words and select genres you are interested in, and choose if you want all or any of these in the search.")
+    
+    # Inline filters
+    col1, col2 = st.columns(2)
+    with col1:
+        keywords_input = st.text_input("Keywords (comma-separated)", value="school")
+        keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
+    with col2:
+        selected_genres = st.multiselect(
+            "Genres",
+            options=sorted(set(g for sublist in df_clean['genres_list'] for g in sublist if g))
+        )
+        genre_mode = st.radio("Genre Match Mode", ["any", "all"])
 
     top_n = st.slider("Number of Recommendations", 1, 20, 10)
 
@@ -565,120 +430,30 @@ with tabs[5]:
             st.warning("No matches found. Try different keywords or genres.")
         else:
             st.dataframe(results.reset_index(drop=True), use_container_width=True)
-    else:
-        st.info("Please load data/netflix_titles.csv first")
             
 # ---------- Visualizations ---------
 with tabs[6]:
     # Load data
     df_raw = loadCsv(NETFLIX_PATH)
-    if df_raw is not None:
-        df_clean, _ = cleanNetflixData(df_raw)
-        df_clean = add_genres_list(df_clean)
-        
-        
-        st.header("📊 Netflix Content Visualizations")
+    df_clean, _ = cleanNetflixData(df_raw)
+    df_clean = add_genres_list(df_clean)
+    
+    
+    st.header("📊 Netflix Content Visualizations")
 
-        # Ratings table with year slider
-        st.subheader("🎬 Ratings Table")
-        year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
-        show_rating_table(df_clean, year=year_cutoff)
+    # Ratings table with year slider
+    st.subheader("🎬 Ratings Table")
+    year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
+    show_rating_table(df_clean, year=year_cutoff)
 
-        # Top genres by country
-        st.subheader("🌍 Top Genres by Country Over Time")
-        country = st.text_input("Enter a country", value="United States")
-        top_n = st.slider("Top N Genres", 3, 10, 5)
-        plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
-    else:
-        st.info("Please load data/netflix_titles.csv first")
-
-# ---------- Description Analyzer ----------
-with tabs[7]:
-
-    st.header("📝 Simple Description Analyzer")
-    st.write("Upload a CSV containing a column named **description** to analyze text sentiment, readability, and keywords.")
-    uploaded = st.file_uploader("Upload CSV", type=["csv"])
-    if uploaded:
-        try:
-            df = pd.read_csv(uploaded)
-            if "description" not in df.columns:
-                st.error("Your CSV must contain a column named 'description'.")
-            else:
-                st.success("File uploaded. Running analysis...")
-
-                # --- Basic sentiment analysis (TextBlob) ---
-                def get_sentiment(text):
-                    try:
-                        return TextBlob(str(text)).sentiment.polarity
-                    except:
-                        return 0
-                df["sentiment"] = df["description"].apply(get_sentiment)
-                # Sentiment label
-                df["sentiment_label"] = df["sentiment"].apply(
-                    lambda x: "Positive" if x > 0.1 else ("Negative" if x < -0.1 else "Neutral")
-                )
-                # --- Readability (textstat) ---
-                df["readability_score"] = df["description"].apply(lambda t: textstat.flesch_reading_ease(str(t)))
-                # --- Simple keyword extraction ---
-                def extract_keywords(text):
-                    words = re.findall(r"\b\w+\b", str(text).lower())
-                    stopwords = {"the","and","a","to","of","in","is","on","it","for","with","at","from"}
-                    keywords = [w for w in words if w not in stopwords]
-                    return ", ".join(keywords[:5])  # top 5 words
-                df["keywords"] = df["description"].apply(extract_keywords)
-                # Show preview
-                st.subheader("Preview of Results")
-                st.dataframe(df.head(50), use_container_width=True)
-
-                st.subheader("📊 Visualization Insights")
-                # ---- Sentiment Pie Chart ----
-                st.write("### Sentiment Distribution")
-                sent_counts = df["sentiment_label"].value_counts()
-                fig_sent = px.pie(
-                    names=sent_counts.index,
-                    values=sent_counts.values,
-                    title="Sentiment Breakdown",
-                    color=sent_counts.index,
-                    color_discrete_map={
-                        "Positive": "#16a34a",
-                        "Neutral": "#6b7280",
-                        "Negative": "#dc2626"
-                    }
-                )
-                st.plotly_chart(fig_sent, use_container_width=True)
-                # ---- Readability Histogram ----
-                st.write("### Readability Score Distribution")
-                fig_read = px.histogram(
-                    df,
-                    x="readability_score",
-                    nbins=20,
-                    title="Distribution of Readability (Flesch Score)"
-                )
-                st.plotly_chart(fig_read, use_container_width=True)
-                # ---- Keyword Frequency Chart ----
-                st.write("### Top Keywords")
-                all_keywords = []
-                for kw_list in df["keywords"]:
-                    for w in kw_list.split(", "):
-                        if len(w.strip()) > 1:
-                            all_keywords.append(w.strip())
-                from collections import Counter
-                kw_counts = Counter(all_keywords).most_common(15)
-                kw_df = pd.DataFrame(kw_counts, columns=["keyword", "count"])
-                fig_kw = px.bar(
-                    kw_df,
-                    x="keyword",
-                    y="count",
-                    title="Top Keywords Found in Descriptions"
-                )
-                st.plotly_chart(fig_kw, use_container_width=True)
-                # Download
-                st.download_button(
-                    label="Download Analyzed CSV",
-                    data=df.to_csv(index=False).encode("utf-8"),
-                    file_name="description_analysis.csv",
-                    use_container_width=True
-                )
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-
+    # Top genres by country
+    st.subheader("🌍 Top Genres by Country Over Time")
+    country = st.text_input("Enter a country", value="United States")
+    top_n = st.slider("Top N Genres", 3, 10, 5)
+    plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
+     
+    
+    
+    
+    
+    
