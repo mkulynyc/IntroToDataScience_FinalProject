@@ -379,11 +379,16 @@ with tabs[4]:
     st.write("Run the end-to-end pipeline from within the UI, or use the sidebar buttons.")
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("🔄 Fetch TMDB Reviews now", use_container_width=True):
-            if not os.path.exists(NETFLIX_PATH):
-                st.error("Missing data/netflix_titles.csv.")
-            else:
-                runScript(f'python "scripts/fetch_tmdb_reviews.py" --netflix "{NETFLIX_PATH}" --output "{REVIEWS_PATH}" --limit 300')
+        ## New
+        from fetch_tmdb_reviews_test import main as fetch_reviews
+        from scripts.fetch_tmdb_reviews import main as fetch_reviews
+
+if st.button("🔄 Fetch TMDB Reviews now", use_container_width=True):
+    try:
+        fetch_reviews(netflix_path=NETFLIX_PATH, output_path=REVIEWS_PATH, limit=300)
+        st.success("Reviews fetched and saved!")
+    except Exception as e:
+        st.error(f"Failed to fetch reviews: {e}")
     with c2:
         if st.button("⚙️ Enrich + Score now", use_container_width=True):
             if not os.path.exists(NETFLIX_PATH):
