@@ -1,18 +1,26 @@
 import os
+import sys
 import time
 from typing import List, Optional
 
 import pandas as pd
 import requests
 import streamlit as st
+import plotly.express as px
 
-from nlp_utils import scoreDataFrame
+# from nlp_utils import scoreDataFrame  # Function doesn't exist
 from nlp.spacy_model import evaluateSpacy
-from viz import plotVaderVsSpacy, plotLabelCounts
+# from viz import plotVaderVsSpacy, plotLabelCounts  # Functions don't exist in viz.py
 
 from plots import *
 from engine import *
 from data_load import *
+
+# Make sure we can import from src/
+sys.path.append(os.path.abspath("src"))
+
+# Your tab utilities
+from src.utils.shared_utils import analyze_emotion, analyze_readability
 
 # =========================
 # Config & constants
@@ -111,6 +119,91 @@ def badge(text: str, tone: str = "neutral"):
         unsafe_allow_html=True
     )
 
+# -------------------------------------------------------
+# Description Analyzer Tab Function
+# -------------------------------------------------------
+def run_description_analysis(df):
+    df = df.copy()
+
+    df["description_emotion_polarity"] = 0.0
+    df["description_emotion_subjectivity"] = 0.0
+    df["description_emotion_sentiment"] = "neutral"
+    df["description_readability_score"] = 0.0
+    df["description_readability_category"] = "unknown"
+
+    for i, row in df.iterrows():
+        desc = row.get("description")
+        if pd.isna(desc):
+            continue
+
+        emo = analyze_emotion(desc)
+        df.loc[i, "description_emotion_polarity"] = emo["polarity"]
+        df.loc[i, "description_emotion_subjectivity"] = emo["subjectivity"]
+        df.loc[i, "description_emotion_sentiment"] = emo["sentiment"]
+
+        read = analyze_readability(desc)
+        df.loc[i, "description_readability_score"] = read["score"]
+        df.loc[i, "description_readability_category"] = read["category"]
+
+    return df
+
+
+def description_analyzer_tab():
+    st.header("📝 Description Analyzer")
+
+    st.write("Upload a CSV with a **description** column to analyze sentiment & readability.")
+
+    uploaded = st.file_uploader("Upload CSV", type=['csv'])
+
+    if uploaded:
+        df = pd.read_csv(uploaded)
+
+        if "description" not in df.columns:
+            st.error("Your CSV must contain a 'description' column.")
+            return
+
+        st.success(f"Loaded {len(df)} rows!")
+
+        if st.button("Run Analysis", type="primary"):
+            analyzed = run_description_analysis(df)
+
+            st.success("Analysis complete!")
+            st.subheader("Preview")
+            st.dataframe(analyzed.head())
+
+            # Sentiment chart
+            st.subheader("Sentiment Polarity Distribution")
+            fig1 = px.histogram(analyzed, x="description_emotion_polarity")
+            st.plotly_chart(fig1, use_container_width=True)
+
+            # Readability chart
+            st.subheader("Readability Score Distribution")
+            fig2 = px.histogram(analyzed, x="description_readability_score")
+            st.plotly_chart(fig2, use_container_width=True)
+
+            csv = analyzed.to_csv(index=False)
+            st.download_button("Download Results", csv, "description_analysis.csv")
+
+    st.markdown("---")
+
+    # Single text analyzer
+    st.subheader("Analyze a Single Description")
+    text = st.text_area("Enter description:")
+
+    if text:
+        emo = analyze_emotion(text)
+        read = analyze_readability(text)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Sentiment", emo["sentiment"])
+            st.metric("Polarity", emo["polarity"])
+            st.metric("Subjectivity", emo["subjectivity"])
+
+        with col2:
+            st.metric("Reading Level", read["category"])
+            st.metric("Score", read["score"])
+
 # =========================
 # Sidebar (pipeline actions)
 # =========================
@@ -163,7 +256,7 @@ if score_btn:
     if not os.path.exists(NETFLIX_PATH):
         st.error("Missing data/netflix_titles.csv.")
     elif not os.path.exists(REVIEWS_PATH):
-        st.error("Missing data/reviews_raw.csv — click “Fetch TMDB Reviews” first.")
+        st.error("Missing data/reviews_raw.csv — click 'Fetch TMDB Reviews' first.")
     else:
         runScript(f'python "scripts/enrich_and_score.py" --netflix "{NETFLIX_PATH}" --reviews "{REVIEWS_PATH}" --output "{ENRICHED_PATH}" --spacyModel "{SPACY_MODEL_PATH}"')
 
@@ -179,7 +272,8 @@ tabs = st.tabs([
     "🧭 Title Explorer",
     "⚙️ Ingest & Score",
     "🎯 Recommender Engine",
-    "📊 Visualizations"
+    "📊 Visualizations",
+    "📝 Description Analyzer"
 ])
 
 # ---------- Overview ----------
@@ -206,19 +300,20 @@ with tabs[0]:
         with c4: kpiCard("Most reviewed", most_reviewed or "—")
 
         st.markdown("### Highlights")
-        left, right = st.columns(2)
-        with left:
-            try:
-                fig = plotLabelCounts(df, which="spacy_label")
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
-        with right:
-            try:
-                scatter = plotVaderVsSpacy(df, textCol="nlp_text")
-                st.plotly_chart(scatter, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
+        st.info("Visualization functions plotLabelCounts and plotVaderVsSpacy are not implemented yet.")
+        # left, right = st.columns(2)
+        # with left:
+        #     try:
+        #         fig = plotLabelCounts(df, which="spacy_label")
+        #         st.plotly_chart(fig, use_container_width=True)
+        #     except Exception as e:
+        #         st.warning(f"Chart error: {e}")
+        # with right:
+        #     try:
+        #         scatter = plotVaderVsSpacy(df, textCol="nlp_text")
+        #         st.plotly_chart(scatter, use_container_width=True)
+        #     except Exception as e:
+        #         st.warning(f"Chart error: {e}")
 
 # ---------- Explore ----------
 with tabs[1]:
@@ -263,19 +358,20 @@ with tabs[1]:
 
         # Charts
         st.markdown("### Charts")
-        colA, colB = st.columns(2)
-        with colA:
-            try:
-                fig1 = plotVaderVsSpacy(view, textCol="nlp_text")
-                st.plotly_chart(fig1, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
-        with colB:
-            try:
-                fig2 = plotLabelCounts(view, which="spacy_label")
-                st.plotly_chart(fig2, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
+        st.info("Visualization functions are not implemented yet.")
+        # colA, colB = st.columns(2)
+        # with colA:
+        #     try:
+        #         fig1 = plotVaderVsSpacy(view, textCol="nlp_text")
+        #         st.plotly_chart(fig1, use_container_width=True)
+        #     except Exception as e:
+        #         st.warning(f"Chart error: {e}")
+        # with colB:
+        #     try:
+        #         fig2 = plotLabelCounts(view, which="spacy_label")
+        #         st.plotly_chart(fig2, use_container_width=True)
+        #     except Exception as e:
+        #         st.warning(f"Chart error: {e}")
 
         st.download_button("Download current view as CSV",
                            data=view.to_csv(index=False).encode("utf-8"),
@@ -309,11 +405,12 @@ with tabs[2]:
         st.dataframe(dis[["title","type","release_year","spacy_label","spacy_pos_prob","vader_compound","vader_label"]].head(300))
 
         st.markdown("#### VADER vs spaCy")
-        try:
-            scatter = plotVaderVsSpacy(df, textCol="nlp_text")
-            st.plotly_chart(scatter, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Chart error: {e}")
+        st.info("Visualization function plotVaderVsSpacy is not implemented yet.")
+        # try:
+        #     scatter = plotVaderVsSpacy(df, textCol="nlp_text")
+        #     st.plotly_chart(scatter, use_container_width=True)
+        # except Exception as e:
+        #     st.warning(f"Chart error: {e}")
 
 # ---------- Title Explorer ----------
 with tabs[3]:
@@ -384,17 +481,18 @@ with tabs[4]:
     st.caption("Need to just score a small CSV on the fly? Upload it below (uses your trained spaCy model).")
     up = st.file_uploader("Upload CSV with a 'text' column", type=["csv"])
     if up:
-        try:
-            raw = pd.read_csv(up)
-            scored = scoreDataFrame(raw, textCol="text", spacyModelPath=SPACY_MODEL_PATH)
-            st.success("Scored! Preview below.")
-            st.dataframe(scored.head(100))
-            st.download_button("Download scored CSV",
-                               data=scored.to_csv(index=False).encode("utf-8"),
-                               file_name="scored.csv",
-                               use_container_width=True)
-        except Exception as e:
-            st.error(f"Scoring failed: {e}")
+        st.info("CSV scoring feature temporarily disabled - scoreDataFrame function needs to be implemented.")
+        # try:
+        #     raw = pd.read_csv(up)
+        #     scored = scoreDataFrame(raw, textCol="text", spacyModelPath=SPACY_MODEL_PATH)
+        #     st.success("Scored! Preview below.")
+        #     st.dataframe(scored.head(100))
+        #     st.download_button("Download scored CSV",
+        #                        data=scored.to_csv(index=False).encode("utf-8"),
+        #                        file_name="scored.csv",
+        #                        use_container_width=True)
+        # except Exception as e:
+        #     st.error(f"Scoring failed: {e}")
  
 # ---------- Recommender Search Engine ---------- 
 with tabs[5]:
@@ -451,9 +549,7 @@ with tabs[6]:
     country = st.text_input("Enter a country", value="United States")
     top_n = st.slider("Top N Genres", 3, 10, 5)
     plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
-     
-    
-    
-    
-    
-    
+
+# ---------- Description Analyzer ----------
+with tabs[7]:
+    description_analyzer_tab()
