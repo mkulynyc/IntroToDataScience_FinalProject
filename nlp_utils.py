@@ -67,3 +67,31 @@ def addNlpColumns(df, sia, stopwordsSet):
     out["tokens"] = out["description_clean"].apply(lambda s: list(tokenizeText(s, stopwordsSet)))
     out["sentiment_compound"] = out["description"].fillna("").apply(lambda s: computeSentiment(s, sia))
     return out
+
+
+def scoreDataFrame(df, textCol: str = "text", spacyModelPath: str = "nlp/spacy_model/artifacts/best"):
+    """
+    Score a pandas DataFrame containing text using VADER and a trained spaCy textcat model.
+
+    Returns a new DataFrame with added columns (vader_* and spacy_*), mirroring the project's
+    `applyVader` and `applySpacy` behavior.
+    """
+    # Local import to avoid adding heavy deps at module import time unless used
+    import pandas as pd
+
+    if not isinstance(df, pd.DataFrame):
+        raise ValueError("df must be a pandas DataFrame")
+    if textCol not in df.columns:
+        raise ValueError(f"text column '{textCol}' not found in dataframe")
+
+    # Use the project's scoring utilities
+    try:
+        from nlp.vader_model import applyVader
+        from nlp.spacy_model import applySpacy
+    except Exception as e:
+        raise ImportError(f"Failed to import scoring utilities: {e}")
+
+    out = df.copy()
+    out = applyVader(out, textCol=textCol)
+    out = applySpacy(out, textCol=textCol, modelPath=spacyModelPath)
+    return out

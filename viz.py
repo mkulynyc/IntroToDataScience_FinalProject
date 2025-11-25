@@ -99,3 +99,68 @@ def plotGenreHeatmap(exploded_genres: pd.DataFrame, top_n: int = 15):
         title=f"Genre Co-occurrence Heatmap (Top {top_n})"
     )
     return fig
+
+
+def plotLabelCounts(df: pd.DataFrame, which: str = "spacy_label"):
+    """
+    Simple bar chart of label counts for the given label column (e.g. 'spacy_label' or 'vader_label').
+    """
+    if df is None or df.empty:
+        return go.Figure()
+    if which not in df.columns:
+        # fallback: try common names
+        if "spacy_label" in df.columns:
+            which = "spacy_label"
+        elif "vader_label" in df.columns:
+            which = "vader_label"
+        else:
+            return go.Figure()
+
+    counts = df[which].fillna("(missing)").value_counts().reset_index()
+    counts.columns = [which, "count"]
+    fig = px.bar(counts, x=which, y="count", title=f"Label distribution: {which}", text="count")
+    fig.update_traces(textposition="outside")
+    return fig
+
+
+def plotVaderVsSpacy(df: pd.DataFrame, textCol: str = "text"):
+    """
+    Scatter plot comparing VADER compound score vs spaCy positive probability.
+    Expects columns: 'vader_compound' and 'spacy_pos_prob' (or similarly prefixed).
+    Hover uses `textCol` if present.
+    """
+    if df is None or df.empty:
+        return go.Figure()
+
+    # find columns
+    vader_col = "vader_compound" if "vader_compound" in df.columns else None
+    spacy_col = "spacy_pos_prob" if "spacy_pos_prob" in df.columns else None
+    if vader_col is None and "vader_compound" in df.columns:
+        vader_col = "vader_compound"
+    if spacy_col is None and "spacy_pos_prob" in df.columns:
+        spacy_col = "spacy_pos_prob"
+
+    if vader_col is None or spacy_col is None:
+        # try alternative prefixes
+        vader_candidates = [c for c in df.columns if c.endswith("compound")]
+        spacy_candidates = [c for c in df.columns if c.endswith("pos_prob") or c.endswith("pos")]
+        vader_col = vader_candidates[0] if vader_candidates else None
+        spacy_col = spacy_candidates[0] if spacy_candidates else None
+
+    if vader_col is None or spacy_col is None:
+        return go.Figure()
+
+    hover = df[textCol].astype(str) if textCol in df.columns else None
+    color_col = "spacy_label" if "spacy_label" in df.columns else ("vader_label" if "vader_label" in df.columns else None)
+
+    fig = px.scatter(
+        df,
+        x=vader_col,
+        y=spacy_col,
+        color=color_col,
+        hover_data={textCol: True} if hover is not None else None,
+        labels={vader_col: "VADER compound", spacy_col: "spaCy POS prob"},
+        title="VADER (compound) vs spaCy (POS prob)"
+    )
+    fig.update_traces(marker=dict(opacity=0.7, size=8))
+    return fig

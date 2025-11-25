@@ -6,9 +6,7 @@ requests
 beautifulsoup4
 lxml
 nltk
-tensorflow
 scikit-learn
-wordcloud
 pycountry
 spacy
 tqdm
@@ -19,8 +17,6 @@ scikit-learn
 streamlit
 textblob
 textstat
-transformers
-torch
 matplotlib
 seaborn
 plotly
