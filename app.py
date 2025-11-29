@@ -1,4 +1,5 @@
 """
+11/29/2025
 Netflix Recommender System - Streamlit App
 Interactive web application for Netflix content analysis and recommendations
 """
@@ -447,7 +448,8 @@ class StreamlitNetflixApp:
         
         if duration_series is not None and not duration_series.dropna().empty:
             st.subheader(f"🎬 {duration_label} Statistics")
-            stats = duration_series.describe()
+            clean_duration = duration_series.dropna()
+            stats = clean_duration.describe()
             
             col1, col2 = st.columns(2)
             with col1:
@@ -455,9 +457,17 @@ class StreamlitNetflixApp:
             
             with col2:
                 fig_hist = px.histogram(
-                    duration_series.dropna(),
+                    x=clean_duration,
                     nbins=40,
-                    title=f"{duration_label} Distribution"
+                    title=f"{duration_label} Distribution",
+                    labels={'x': f'{duration_label} (minutes)', 'y': 'Count'},
+                    color_discrete_sequence=['#1f77b4']
+                )
+                fig_hist.update_traces(marker=dict(line=dict(color='white', width=1)))
+                fig_hist.update_layout(
+                    showlegend=False,
+                    xaxis_title=f"{duration_label} (minutes)",
+                    yaxis_title="Number of Titles"
                 )
                 st.plotly_chart(fig_hist, width='stretch')
         
@@ -478,21 +488,80 @@ class StreamlitNetflixApp:
                         nbins=20,
                         title="Release Year Distribution"
                     )
+                    fig_year_hist.update_traces(marker=dict(line=dict(color='white', width=1)))
                     st.plotly_chart(fig_year_hist, width='stretch')
             else:
                 st.info("Release year data not available after processing.")
             
         # Rating distribution
-        if 'rating' in self.df.columns:
-            st.subheader("⭐ Rating Distribution")
-            rating_counts = self.df['rating'].value_counts().head(10)
-            fig_rating = px.bar(
-                x=rating_counts.values,
-                y=rating_counts.index,
-                orientation='h',
-                title="Top 10 Content Ratings"
-            )
-            st.plotly_chart(fig_rating, width='stretch')
+        # Check for TMDB rating from runtime CSV (prioritize _runtime suffix to get numeric TMDB ratings)
+        rating_col = None
+        
+        # First check all columns to find any numeric rating column
+        for col in self.df.columns:
+            if 'rating' in col.lower() and '_runtime' in col.lower():
+                # Try to check if it's numeric
+                try:
+                    test_vals = pd.to_numeric(self.df[col], errors='coerce').dropna()
+                    if len(test_vals) > 0 and test_vals.max() <= 10:  # TMDB ratings are 0-10
+                        rating_col = col
+                        break
+                except:
+                    continue
+        
+        # Fallback to checking specific column names
+        if not rating_col:
+            possible_rating_cols = ['rating_stars_runtime', 'rating_runtime', 'total_rating_runtime', 'total_rating', 'vote_average', 'tmdb_rating']
+            for col in possible_rating_cols:
+                if col in self.df.columns:
+                    rating_col = col
+                    break
+            
+        if rating_col:
+            try:
+                st.subheader("⭐ TMDB Rating Distribution")
+                
+                # Get ratings, convert to numeric, and clean data
+                ratings = pd.to_numeric(self.df[rating_col], errors='coerce').dropna()
+                
+                if len(ratings) > 0:
+                    # Create histogram with rating bins
+                    fig_rating = px.histogram(
+                        x=ratings,
+                        nbins=20,
+                        title="TMDB Rating Distribution (0-10 scale)",
+                        labels={'x': 'Rating (0-10)', 'y': 'Number of Titles'},
+                        color_discrete_sequence=['#1f77b4']
+                    )
+                    fig_rating.update_traces(marker=dict(line=dict(color='white', width=1)))
+                    fig_rating.update_layout(
+                        xaxis_title="Rating (0-10)",
+                        yaxis_title="Number of Titles",
+                        showlegend=False
+                    )
+                    st.plotly_chart(fig_rating, width='stretch')
+                    
+                    # Show rating statistics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Average Rating", f"{ratings.mean():.2f}/10")
+                    with col2:
+                        st.metric("Median Rating", f"{ratings.median():.2f}/10")
+                    with col3:
+                        st.metric("Total Rated", f"{len(ratings):,}")
+                else:
+                    st.info(f"No valid rating data found in column '{rating_col}'.")
+            except Exception as e:
+                st.error(f"Error displaying rating distribution: {str(e)}")
+        else:
+            # Debug: Show what columns are available
+            with st.expander("🔍 Debug: Available columns"):
+                st.write("Looking for TMDB rating columns. All columns with 'rating':")
+                rating_cols = [col for col in self.df.columns if 'rating' in col.lower()]
+                st.write(rating_cols)
+                st.write("\nAll columns:")
+                st.write(list(self.df.columns))
+            st.info("No TMDB rating column found. Please ensure netflix_movies_tv_runtime.csv is loaded correctly.")
     
     def render_analysis_tab(self):
         """Render the analysis tab"""
@@ -581,7 +650,14 @@ class StreamlitNetflixApp:
             fig_monthly = px.bar(
                 x=labeled_months,
                 y=monthly_counts.values,
-                title="Content Additions by Month"
+                title="Content Additions by Month",
+                labels={'x': 'Month', 'y': 'Number of Titles'},
+                color_discrete_sequence=['#1f77b4']
+            )
+            fig_monthly.update_traces(marker=dict(line=dict(color='white', width=1)))
+            fig_monthly.update_layout(
+                xaxis_title="Month",
+                yaxis_title="Number of Titles"
             )
             st.plotly_chart(fig_monthly, width='stretch')
         elif release_year_available:
