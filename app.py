@@ -10,10 +10,6 @@ from nlp_utils import scoreDataFrame
 from nlp.spacy_model import evaluateSpacy
 from viz import plotVaderVsSpacy, plotLabelCounts
 
-from plots import *
-from engine import *
-from data_load import *
-
 # =========================
 # Config & constants
 # =========================
@@ -177,9 +173,7 @@ tabs = st.tabs([
     "🔎 Explore",
     "⚖️ Model Compare",
     "🧭 Title Explorer",
-    "⚙️ Ingest & Score",
-    "🎯 Recommender Engine",
-    "📊 Visualizations"
+    "⚙️ Ingest & Score"
 ])
 
 # ---------- Overview ----------
@@ -395,65 +389,3 @@ with tabs[4]:
                                use_container_width=True)
         except Exception as e:
             st.error(f"Scoring failed: {e}")
- 
-# ---------- Recommender Search Engine ---------- 
-with tabs[5]:
-    # Load data
-    df_raw = loadCsv(NETFLIX_PATH)
-    df_clean, _ = cleanNetflixData(df_raw)
-    df_clean = add_genres_list(df_clean)
-    
-    # Set up recommender engine on streamlit
-    st.subheader("Recommender Search Engine")
-    st.write("Write key words and select genres you are interested in, and choose if you want all or any of these in the search.")
-    
-    # Inline filters
-    col1, col2 = st.columns(2)
-    with col1:
-        keywords_input = st.text_input("Keywords (comma-separated)", value="school")
-        keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
-    with col2:
-        selected_genres = st.multiselect(
-            "Genres",
-            options=sorted(set(g for sublist in df_clean['genres_list'] for g in sublist if g))
-        )
-        genre_mode = st.radio("Genre Match Mode", ["any", "all"])
-
-    top_n = st.slider("Number of Recommendations", 1, 20, 10)
-
-    # Run recommender
-    st.subheader("Recommended Titles")
-    if st.button("Run Recommender"):
-        keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
-        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode)
-        if results.empty:
-            st.warning("No matches found. Try different keywords or genres.")
-        else:
-            st.dataframe(results.reset_index(drop=True), use_container_width=True)
-            
-# ---------- Visualizations ---------
-with tabs[6]:
-    # Load data
-    df_raw = loadCsv(NETFLIX_PATH)
-    df_clean, _ = cleanNetflixData(df_raw)
-    df_clean = add_genres_list(df_clean)
-    
-    
-    st.header("📊 Netflix Content Visualizations")
-
-    # Ratings table with year slider
-    st.subheader("🎬 Ratings Table")
-    year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
-    show_rating_table(df_clean, year=year_cutoff)
-
-    # Top genres by country
-    st.subheader("🌍 Top Genres by Country Over Time")
-    country = st.text_input("Enter a country", value="United States")
-    top_n = st.slider("Top N Genres", 3, 10, 5)
-    plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
-     
-    
-    
-    
-    
-    
