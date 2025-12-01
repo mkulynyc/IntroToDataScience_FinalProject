@@ -10,6 +10,10 @@ from nlp_utils import scoreDataFrame
 from nlp.spacy_model import evaluateSpacy
 from viz import plotVaderVsSpacy, plotLabelCounts
 
+from plots import *
+from engine import *
+from data_load import *
+
 # =========================
 # Config & constants
 # =========================
@@ -168,12 +172,20 @@ if score_btn:
 # =========================
 st.title("🎬 Netflix Sentiment Workbench (VADER + spaCy)")
 
+# Temporary visual indicator to confirm updated code is running
+st.sidebar.markdown("**DEV:** top-level tab `🏆 Top Positive & Negative Titles` added")
+
 tabs = st.tabs([
     "📊 Overview",
     "🔎 Explore",
     "⚖️ Model Compare",
     "🧭 Title Explorer",
-    "⚙️ Ingest & Score"
+    "⚙️ Ingest & Score",
+    "🎯 Recommender Engine",
+    "📊 Visualizations",
+    "📈 Sentiment Summary by Genre",
+    "🏆 Top Positive & Negative Titles",
+    "💡 Insights"
 ])
 
 # ---------- Overview ----------
@@ -389,3 +401,228 @@ with tabs[4]:
                                use_container_width=True)
         except Exception as e:
             st.error(f"Scoring failed: {e}")
+ 
+# ---------- Recommender Search Engine ---------- 
+with tabs[5]:
+    # Load data
+    df_raw = loadCsv(NETFLIX_PATH)
+    df_clean, _ = cleanNetflixData(df_raw)
+    df_clean = add_genres_list(df_clean)
+    
+    # Set up recommender engine on streamlit
+    st.subheader("Recommender Search Engine")
+    st.write("Write key words and select genres you are interested in, and choose if you want all or any of these in the search.")
+    
+    # Inline filters
+    col1, col2 = st.columns(2)
+    with col1:
+        keywords_input = st.text_input("Keywords (comma-separated)", value="school")
+        keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
+    with col2:
+        selected_genres = st.multiselect(
+            "Genres",
+            options=sorted(set(g for sublist in df_clean['genres_list'] for g in sublist if g))
+        )
+        genre_mode = st.radio("Genre Match Mode", ["any", "all"])
+
+    top_n = st.slider("Number of Recommendations", 1, 20, 10)
+
+    # Run recommender
+    st.subheader("Recommended Titles")
+    if st.button("Run Recommender"):
+        keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
+        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode)
+        if results.empty:
+            st.warning("No matches found. Try different keywords or genres.")
+        else:
+            st.dataframe(results.reset_index(drop=True), use_container_width=True)
+            
+# ---------- Visualizations ---------
+with tabs[6]:
+    # Load data
+    df_raw = loadCsv(NETFLIX_PATH)
+    df_clean, _ = cleanNetflixData(df_raw)
+    df_clean = add_genres_list(df_clean)
+    
+    
+    st.header("📊 Netflix Content Visualizations")
+
+    # Ratings table with year slider
+    st.subheader("🎬 Ratings Table")
+    year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
+    show_rating_table(df_clean, year=year_cutoff)
+
+    # Top genres by country
+    st.subheader("🌍 Top Genres by Country Over Time")
+    country = st.text_input("Enter a country", value="United States")
+    top_n = st.slider("Top N Genres", 3, 10, 5)
+    plot_top_genres_by_country(df_clean, country=country, top_n=top_n)
+    
+    
+    
+    
+    
+
+# ---------- Sentiment Analysis (Merged Tab) ----------
+with tabs[7]:
+    df = loadEnriched(ENRICHED_PATH)
+    st.header("🧠 Sentiment Analysis Dashboard")
+
+    if df is None or df.empty:
+        st.info("No enriched dataset yet. Use the **Ingest & Score** tab to create it.")
+    else:
+        sub = st.tabs(["🏆 Top Titles", "📊 Genre Sentiment Summary"])
+
+        # ======= TOP TITLES =======
+        with sub[0]:
+            st.header("🏆 Top Positive & Negative Titles")
+            col1, col2, col3 = st.columns([2,2,1])
+
+            # Filters
+            with col1:
+                genres_opts = sorted({g for lst in df.get("genres_list", []) for g in lst}) if "genres_list" in df.columns else []
+                selected_genres = st.multiselect("Select genres", genres_opts)
+            with col2:
+                type_opts = ["(all)"] + sorted(df["type"].dropna().unique()) if "type" in df.columns else ["(all)"]
+                selected_type = st.selectbox("Type filter", type_opts)
+            with col3:
+                max_titles = int(df['title'].nunique()) if 'title' in df.columns else len(df)
+                top_n = st.slider("Top N titles", 1, max(1, max_titles), min(10, max(1, max_titles)))
+
+            s = df.copy()
+            s["spacy_pos_prob"] = s.get("spacy_pos_prob", pd.Series([0.0]*len(s))).fillna(0.0)
+            s["vader_compound"] = s.get("vader_compound", pd.Series([0.0]*len(s))).fillna(0.0)
+            s["vader_norm"] = (s["vader_compound"] + 1.0)/2.0
+            s["combined_score"] = s["spacy_pos_prob"] + s["vader_norm"]
+
+            # Apply filters
+            if selected_genres and "genres_list" in s.columns:
+                s = s[s["genres_list"].apply(lambda lst: any(g in lst for g in selected_genres))]
+            if selected_type != "(all)":
+                s = s[s["type"] == selected_type]
+
+            # Drop duplicates
+            if "review_join" in s.columns:
+                s["review_count"] = s["review_join"].fillna("").astype(str).apply(lambda x: 0 if not x else x.count(" || ")+1)
+                s = s.sort_values("review_count", ascending=False).drop_duplicates(subset=["title"], keep="first")
+            else:
+                s = s.drop_duplicates(subset=["title"], keep="first")
+
+            # Positive / Negative
+            pos = s.sort_values("combined_score", ascending=False).head(top_n)
+            neg = s.sort_values("combined_score", ascending=True).head(top_n)
+
+            import plotly.express as px
+
+            # Truncate long titles for y-axis but keep full title in hover
+            def truncate_title(title, length=30):
+                return title if len(title) <= length else title[:length] + "..."
+
+            # Positive Titles Chart
+            pos["title_trunc"] = pos["title"].apply(truncate_title)
+            figp = px.bar(
+                pos.sort_values("combined_score", ascending=True),
+                x="combined_score",
+                y="title_trunc",
+                orientation="h",
+                color="combined_score",
+                color_continuous_scale="Greens",
+                labels={"combined_score":"Score","title_trunc":"Title"},
+                hover_data={"title":True, "type":True, "release_year":True, "spacy_pos_prob":True, "vader_compound":True}
+            )
+            figp.update_layout(yaxis={"categoryorder":"total ascending"})
+
+            # Negative Titles Chart
+            neg["title_trunc"] = neg["title"].apply(truncate_title)
+            fign = px.bar(
+                neg.sort_values("combined_score", ascending=True),
+                x="combined_score",
+                y="title_trunc",
+                orientation="h",
+                color="combined_score",
+                color_continuous_scale="Reds",
+                labels={"combined_score":"Score","title_trunc":"Title"},
+                hover_data={"title":True, "type":True, "release_year":True, "spacy_pos_prob":True, "vader_compound":True}
+            )
+            fign.update_layout(yaxis={"categoryorder":"total ascending"})
+
+            # Display charts and tables
+            col_left, col_right = st.columns(2)
+
+            with col_left:
+                st.subheader("Top Positive Titles")
+                st.plotly_chart(figp, use_container_width=True)
+                st.dataframe(pos[["title","type","release_year","spacy_pos_prob","vader_compound","combined_score"]], use_container_width=True)
+                st.download_button("Download Positive CSV", data=pos.to_csv(index=False).encode("utf-8"), file_name="top_positive_titles.csv")
+
+            with col_right:
+                st.subheader("Top Negative Titles")
+                st.plotly_chart(fign, use_container_width=True)
+                st.dataframe(neg[["title","type","release_year","spacy_pos_prob","vader_compound","combined_score"]], use_container_width=True)
+                st.download_button("Download Negative CSV", data=neg.to_csv(index=False).encode("utf-8"), file_name="top_negative_titles.csv")
+
+        # ======= GENRE SENTIMENT SUMMARY (interactive variant) =======
+        with sub[1]:
+            st.header("📊 Sentiment Summary by Genre")
+
+            # Type filter
+            type_opts = ["(all)"] + sorted(df["type"].dropna().unique()) if "type" in df.columns else ["(all)"]
+            selected_type = st.selectbox("Filter by Type", type_opts)
+
+            # Filter dataframe
+            s2 = df.copy()
+            if selected_type != "(all)":
+                s2 = s2[s2["type"] == selected_type]
+
+            if "genres_list" not in s2.columns:
+                st.warning("No genre information found in dataset.")
+            else:
+                s2 = s2.explode("genres_list")
+
+                # Compute average sentiment
+                s2["avg_sentiment"] = s2["spacy_pos_prob"].fillna(0) + ((s2["vader_compound"].fillna(0) + 1) / 2)
+                genre_summary = (
+                    s2.groupby("genres_list")
+                    .agg(avg_sentiment=("avg_sentiment", "mean"), num_titles=("title", "count"))
+                    .reset_index()
+                    .sort_values("num_titles", ascending=False)
+                )
+
+                # Add positive/negative/neutral label
+                def sentiment_label(score):
+                    if score > 0.55:
+                        return "Positive"
+                    elif score < 0.45:
+                        return "Negative"
+                    else:
+                        return "Neutral"
+
+                genre_summary["Sentiment"] = genre_summary["avg_sentiment"].apply(sentiment_label)
+
+                # Top N genres slider
+                top_n = st.slider("Top N genres to show", 1, len(genre_summary), 10)
+                genre_summary = genre_summary.head(top_n)
+
+                # Show table
+                st.dataframe(genre_summary, use_container_width=True)
+
+                # Interactive diverging bar chart
+                import plotly.express as px
+
+                fig = px.bar(
+                    genre_summary,
+                    x="avg_sentiment",
+                    y="genres_list",
+                    color="Sentiment",
+                    color_discrete_map={"Positive": "#2ca02c", "Neutral": "#ffbb78", "Negative": "#d62728"},
+                    orientation="h",
+                    labels={"avg_sentiment": "Average Sentiment", "genres_list": "Genre"},
+                    title="Average Sentiment by Genre",
+                )
+                fig.update_layout(yaxis={"categoryorder": "total ascending"})
+                st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+
