@@ -58,18 +58,15 @@ def plot_sentiment_by_rating(df):
     df_sent = df[df["vader_compound"].notna() & df["rating"].notna()]
     df_sent = df_sent[df_sent["rating"].isin(maturity_order)]
 
-    plt.figure(figsize=(12, 6))
-    sns.boxplot(data=df_sent, x="rating", y="vader_compound", order=maturity_order, palette="coolwarm")
-    plt.title("Sentiment Score Distribution by Rating (Sorted by Maturity)")
-    plt.xlabel("Rating")
-    plt.ylabel("VADER Compound Sentiment Score")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.boxplot(data=df_sent, x="rating", y="vader_compound", order=maturity_order, palette="coolwarm", ax=ax)
+    ax.set_title("Sentiment Score Distribution by Rating (Sorted by Maturity)")
+    ax.set_xlabel("Rating")
+    ax.set_ylabel("VADER Compound Sentiment Score")
     plt.xticks(rotation=45)
-    plt.figtext(0.5, -0.05,
-                "Boxplots show sentiment score distributions for each rating, ordered by increasing maturity.",
-                wrap=True, horizontalalignment='center', fontsize=9)
-    plt.tight_layout()
-    plt.show()
-    
+    st.pyplot(fig)
+    st.caption("Boxplots show sentiment score distributions for each rating, ordered by increasing maturity.")
+
 ### Top Actors Plot::
 def plot_top_actors(df, top_n=20):
     # Flatten and count actors, excluding "Unknown"
@@ -80,17 +77,13 @@ def plot_top_actors(df, top_n=20):
     # Top 20
     top_actors = pd.DataFrame(actor_counts.most_common(20), columns=["actor", "count"])
 
-    # Plot
-    import seaborn as sns
-    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.barplot(data=top_actors, y="actor", x="count", palette="viridis", ax=ax)
+    ax.set_title("Top 20 Most Frequent Actors in Netflix Titles (Excluding 'Unknown')")
+    ax.set_xlabel("Number of Appearances")
+    ax.set_ylabel("Actor")
+    st.pyplot(fig)
 
-    plt.figure(figsize=(10, 6))
-    sns.barplot(data=top_actors, y="actor", x="count", palette="viridis")
-    plt.title("Top 20 Most Frequent Actors in Netflix Titles (Excluding 'Unknown')")
-    plt.xlabel("Number of Appearances")
-    plt.ylabel("Actor")
-    plt.tight_layout()
-    plt.show()
     
 ### Volume by Country plot
 def plot_country_distribution(df):
@@ -106,7 +99,8 @@ def plot_country_distribution(df):
                         color_continuous_scale="Reds",
                         title="Netflix Content Volume by Country")
     fig.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
-    fig.show()
+    st.plotly_chart(fig, use_container_width=True)
+
     
     
 ### Movie vs Tv over time plot
@@ -118,13 +112,10 @@ def plot_movie_tv_trends(df):
     counts = df_years.groupby(["release_year", "type"]).size().reset_index(name="count")
 
     # Plot
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(data=counts, x="release_year", y="count", hue="type", marker="o")
-    plt.title("Movie vs TV Show Volume Over Time")
-    plt.xlabel("Release Year")
-    plt.ylabel("Number of Titles")
-    plt.figtext(0.5, -0.05,
-                "Each line shows the number of Netflix Movies and TV Shows released per year.",
-                wrap=True, horizontalalignment='center', fontsize=9)
-    plt.tight_layout()
-    plt.show()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.lineplot(data=counts, x="release_year", y="count", hue="type", marker="o", ax=ax)
+    ax.set_title("Movie vs TV Show Volume Over Time")
+    ax.set_xlabel("Release Year")
+    ax.set_ylabel("Number of Titles")
+    st.pyplot(fig)
+    st.caption("Each line shows the number of Netflix Movies and TV Shows released per year.")
