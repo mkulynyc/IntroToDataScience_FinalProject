@@ -7,19 +7,27 @@ import re
 import streamlit as st
 from tabulate import tabulate
 import plotly.express as px
+from rapidfuzz import fuzz
 
-### Keyword matching function
-def keyword_match(df, keywords, match_mode='any'):
+### Keyword fuzzy matching function
+def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=70):
     """
-    Filters movies whose description contains any or all of the keywords.
+    Filters movies whose description contains fuzzy matches of the keywords.
+    - threshold: similarity score (0–100) for fuzzy matching
     """
-    if match_mode == 'all':
-        return df[df['description'].apply(
-            lambda desc: all(re.search(re.escape(k), str(desc), re.IGNORECASE) for k in keywords)
-        )]
-    else:
-        pattern = '|'.join([re.escape(k) for k in keywords])
-        return df[df['description'].str.contains(pattern, case=False, na=False)]
+    def match_desc(desc):
+        tokens = str(desc).lower().split()
+        if match_mode == 'all':
+            return all(
+                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                for k in keywords
+            )
+        else:
+            return any(
+                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                for k in keywords
+            )
+    return df[df['description'].apply(match_desc)]
 
 ### Filtering to only include movies that match the genres provided
 def genre_filter(df, genre_list, match_mode='any'):
@@ -46,8 +54,8 @@ def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mod
     filtered = df.copy()
 
     if keywords:
-        filtered = keyword_match(filtered, keywords, match_mode=keyword_match_mode)
-        print(f"🔍 Keyword filter: {len(filtered)} matches for {keywords} ({keyword_match_mode})")
+        filtered = keyword_match_fuzzy(filtered, keywords, match_mode=keyword_match_mode, threshold=fuzzy_threshold)
+        print(f"🔍 Keyword filter: {len(filtered)} matches for {keywords} ({keyword_match_mode}, threshold={fuzzy_threshold})")
 
     if genres:
         filtered = genre_filter(filtered, genres, match_mode=genre_match_mode)
@@ -68,7 +76,7 @@ def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mod
 
 
 ### Run the recommender
-def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', genre_match_mode='any'):
+def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', genre_match_mode='any', fuzzy_threshold=70):
     """
     Wrapper for Streamlit app to run the recommender system.
     """
@@ -78,5 +86,6 @@ def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', ge
         genres=genres,
         top_n=top_n,
         keyword_match_mode=keyword_match_mode,
-        genre_match_mode=genre_match_mode
+        genre_match_mode=genre_match_mode,
+        fuzzy_threshold=fuzzy_threshold
     )
