@@ -1,4 +1,4 @@
-from data_load import *
+from matt_data_load import *
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -86,6 +86,11 @@ def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', ge
         genres=genres,
         top_n=top_n,
         keyword_match_mode=keyword_match_mode,
+<<<<<<< HEAD:engine.py
         genre_match_mode=genre_match_mode,
         fuzzy_threshold=fuzzy_threshold
     )
+=======
+        genre_match_mode=genre_match_mode
+    )
+>>>>>>> c711ac0340657e6b7a61c11d29e5d050f72ede40:matt_engine.py
