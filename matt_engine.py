@@ -10,7 +10,7 @@ import plotly.express as px
 from rapidfuzz import fuzz
 
 ### Keyword fuzzy matching function
-def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=70):
+def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=90):
     """
     Filters movies whose description contains fuzzy matches of the keywords.
     - threshold: similarity score (0–100) for fuzzy matching
