@@ -10,9 +10,9 @@ import streamlit as st
 from nlp.spacy_model import evaluateSpacy
 #from viz import plotVaderVsSpacy, plotLabelCounts
 
-from plots import *
-from engine import *
-from data_load import *
+from matt_plots import *
+from matt_engine import *
+from matt_data_load import *
 from src.utils.shared_utils import analyze_emotion, analyze_readability, count_words
 
 # =========================
@@ -448,12 +448,18 @@ with tabs[5]:
         genre_mode = st.radio("Genre Match Mode", ["any", "all"])
 
     top_n = st.slider("Number of Recommendations", 1, 20, 10)
+    st.write("""The fuzzy match slider controls how strictly keywords must match the movie descriptions.
+             - **Higher values (closer to 100)** → only very close matches are included (e.g., 'color' matches 'color').
+             - **Lower values (closer to 50)** → looser matches are allowed (e.g., 'color' also matches 'colour' or 'colr').""")
+
+    fuzzy_threshold = st.slider("Fuzzy match threshold", min_value=50, max_value=100, value=90)
 
     # Run recommender
     st.subheader("Recommended Titles")
+
     if st.button("Run Recommender"):
         keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
-        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode)
+        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode, fuzzy_threshold=fuzzy_threshold)
         if results.empty:
             st.warning("No matches found. Try different keywords or genres.")
         else:
