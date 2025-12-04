@@ -46,7 +46,7 @@ def genre_filter(df, genre_list, match_mode='any'):
     return df[df['genres_list'].apply(match_genres)]
 
 ### Recommending top movies based on inputs
-def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mode='any', genre_match_mode='any'):
+def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mode='any', genre_match_mode='any', fuzzy_threshold=70):
     """
     Recommends top-rated movies based on keyword and genre filters.
     Match modes: 'any' or 'all' for both keywords and genres.
