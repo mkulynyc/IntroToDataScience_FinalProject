@@ -1,3 +1,15 @@
+# latest changes to app.py file 
+# 12/04/2025
+""" List of Changes Made:
+Turn the 1st tab into basically the README
+Merge sentiment analysis in statistics tab
+Change model compare to nlp...
+Merge description analyzer into nlp tab
+delete ingest and score tab
+Merge visualizations into explore tab
+Merge 1st time series plot into stats tab
+Merge content clustering and clustering stats into recommender, delete rest of analysis DK
+"""
 import os
 import time
 from typing import List, Optional
