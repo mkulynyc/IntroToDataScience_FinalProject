@@ -19,12 +19,12 @@ def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=90):
         tokens = str(desc).lower().split()
         if match_mode == 'all':
             return all(
-                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                any(fuzz.ratio(k.lower(), token) >= threshold for token in tokens)
                 for k in keywords
             )
         else:
             return any(
-                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                any(fuzz.ratio(k.lower(), token) >= threshold for token in tokens)
                 for k in keywords
             )
     return df[df['description'].apply(match_desc)]
