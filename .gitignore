@@ -9,6 +9,11 @@ ipython_config.py
 cython_debug/
 *__pycache__/
 *.py[cod]
+.venv/
+venv/
+env/
+*.pkl
+pickle_data/
 
 # data
 #data
