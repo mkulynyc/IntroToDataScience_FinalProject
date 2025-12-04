@@ -99,3 +99,49 @@ def plotGenreHeatmap(exploded_genres: pd.DataFrame, top_n: int = 15):
         title=f"Genre Co-occurrence Heatmap (Top {top_n})"
     )
     return fig
+
+def plotVaderVsSpacy(df: pd.DataFrame, textCol: str = "text"):
+    """
+    Scatter comparing VADER compound vs spaCy positive prob.
+    Colors by agreement of labels.
+    """
+    if "vader_compound" not in df.columns or "spacy_pos_prob" not in df.columns:
+        raise ValueError("Dataframe missing vader_compound or spacy_pos_prob columns.")
+
+    # determine agreement if labels exist
+    agree = None
+    if "vader_label" in df.columns and "spacy_label" in df.columns:
+        agree = (df["vader_label"] == df["spacy_label"]).map({True: "Agree", False: "Disagree"})
+
+    hover = ["title", "type", "release_year"]
+    if textCol in df.columns:
+        hover.append(textCol)
+
+    fig = px.scatter(
+        df,
+        x="vader_compound",
+        y="spacy_pos_prob",
+        color=agree if agree is not None else None,
+        hover_data={h: True for h in hover},
+        title="VADER vs spaCy sentiment"
+    )
+    fig.update_layout(
+        xaxis_title="VADER compound (neg → pos)",
+        yaxis_title="spaCy positive probability"
+    )
+    fig.add_hline(y=0.5, line_dash="dot", line_color="gray")
+    fig.add_vline(x=0.0, line_dash="dot", line_color="gray")
+    return fig
+
+def plotLabelCounts(df: pd.DataFrame, which: str = "spacy_label"):
+    """
+    Bar chart of label distribution for spaCy or VADER columns.
+    """
+    if which not in df.columns:
+        raise ValueError(f"Column not found: {which}")
+    counts = df[which].fillna("Unknown").value_counts().reset_index()
+    counts.columns = ["label", "count"]
+    fig = px.bar(counts, x="label", y="count", title=f"{which} distribution", text="count")
+    fig.update_traces(textposition="outside")
+    fig.update_layout(xaxis_title="Label", yaxis_title="Count")
+    return fig
