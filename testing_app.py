@@ -459,7 +459,7 @@ with tabs[5]:
 
     if st.button("Run Recommender"):
         keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
-        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode)
+        results = run_recommender(df_clean, keywords, selected_genres, top_n, keyword_mode, genre_mode, fuzzy_threshold=fuzzy_threshold)
         if results.empty:
             st.warning("No matches found. Try different keywords or genres.")
         else:
