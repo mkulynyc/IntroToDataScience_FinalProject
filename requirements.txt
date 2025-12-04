@@ -25,3 +25,4 @@ matplotlib
 seaborn
 plotly
 tabulate
+rapidfuzz
