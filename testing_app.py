@@ -452,7 +452,7 @@ with tabs[5]:
              - **Higher values (closer to 100)** → only very close matches are included (e.g., 'color' matches 'color').
              - **Lower values (closer to 50)** → looser matches are allowed (e.g., 'color' also matches 'colour' or 'colr').""")
 
-    fuzzy_threshold = st.slider("Fuzzy match threshold", min_value=50, max_value=100, value=70)
+    fuzzy_threshold = st.slider("Fuzzy match threshold", min_value=50, max_value=100, value=90)
 
     # Run recommender
     st.subheader("Recommended Titles")
