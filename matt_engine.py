@@ -86,16 +86,6 @@ def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', ge
         genres=genres,
         top_n=top_n,
         keyword_match_mode=keyword_match_mode,
-<<<<<<< HEAD
-<<<<<<< HEAD:engine.py
         genre_match_mode=genre_match_mode,
         fuzzy_threshold=fuzzy_threshold
     )
-=======
-        genre_match_mode=genre_match_mode
-=======
-        genre_match_mode=genre_match_mode,
-        fuzzy_threshold=fuzzy_threshold
->>>>>>> 3e16046742a893b1ab6ac163795b2dfce812e054
-    )
->>>>>>> c711ac0340657e6b7a61c11d29e5d050f72ede40:matt_engine.py
