@@ -2,6 +2,11 @@
 import re
 from typing import Tuple, Set, Optional, Iterable
 import nltk
+import pandas as pd
+
+from nlp.utils import cleanText
+from nlp.vader_model import applyVader
+from nlp.spacy_model import applySpacy
 
 def initNltk(dataDir: str = ".nltk_data"):
     """
@@ -66,4 +71,22 @@ def addNlpColumns(df, sia, stopwordsSet):
     out["description_clean"] = out["description"].fillna("").apply(preprocessText)
     out["tokens"] = out["description_clean"].apply(lambda s: list(tokenizeText(s, stopwordsSet)))
     out["sentiment_compound"] = out["description"].fillna("").apply(lambda s: computeSentiment(s, sia))
+    return out
+
+def scoreDataFrame(
+    df: pd.DataFrame,
+    textCol: str = "text",
+    spacyModelPath: str = "nlp/spacy_model/artifacts/best",
+) -> pd.DataFrame:
+    """
+    Run the VADER + spaCy scoring pipeline on an arbitrary dataframe.
+    Returns a copy with sentiment columns appended.
+    """
+    if textCol not in df.columns:
+        raise ValueError(f"Missing text column: {textCol}")
+
+    out = df.copy()
+    out[textCol] = out[textCol].fillna("").astype(str).map(cleanText)
+    out = applyVader(out, textCol=textCol)
+    out = applySpacy(out, textCol=textCol, modelPath=spacyModelPath)
     return out
