@@ -182,43 +182,129 @@ tabs = st.tabs([
     "📊 Visualizations"
 ])
 
-# ---------- Overview ----------
+# ---------- Overview (README-style) ----------
 with tabs[0]:
+    st.markdown("# 📘 Netflix Sentiment Workbench")
+    st.markdown("""
+    Welcome to the **Netflix Sentiment Workbench**, an interactive data exploration tool that combines:
+
+    - ⭐ **VADER** for rule-based sentiment scoring  
+    - 🤖 **spaCy Text Classification** for machine-learned sentiment  
+    - 🎬 **Netflix metadata** (titles, genres, release years)  
+    - 📝 **User-generated TMDB reviews**  
+    - 🔍 **A lightweight recommender system**  
+    - 📊 **Rich visualizations** for patterns in content and sentiment  
+
+    This app gives you a complete hands-on environment for exploring how sentiment varies across Netflix titles and how different NLP models compare.
+    """)
+
+    st.markdown("---")
+
+    st.markdown("## 🚀 How the Pipeline Works")
+
+    st.markdown("""
+    **1️⃣ Fetch TMDB Reviews**  
+    The pipeline calls the TMDB API to download user reviews for Netflix titles.  
+    These reviews are appended to `data/reviews_raw.csv`.
+
+    **2️⃣ Enrich + Score**  
+    The script `enrich_and_score.py` merges Netflix metadata with reviews and creates a combined text field (`nlp_text`).  
+    Each title is scored using:  
+    - **VADER** → compound score + sentiment label  
+    - **spaCy TextCat** → POSITIVE / NEGATIVE classification + probability  
+
+    The processed dataset is stored in:
+
+    ```
+    data/netflix_enriched_scored.csv
+    ```
+
+    **3️⃣ Explore the Dataset**  
+    Filters allow you to analyze sentiment trends by:
+    - Year  
+    - Type (Movie / TV Show)  
+    - Genres  
+    - Model confidence  
+    """)
+
+    st.markdown("---")
+
+    st.markdown("## 🧭 App Navigation Guide")
+
+    st.markdown("""
+    ### **📊 Overview**  
+    You're here! This tab explains the purpose of the application and introduces its capabilities.
+
+    ### **🔎 Explore**  
+    Filter titles by:
+    - Year  
+    - Type  
+    - spaCy sentiment  
+    - Genre  
+    - POSITIVE probability threshold  
+
+    View trends and compare model outputs visually.
+
+    ### **⚖️ Model Compare**  
+    Examine agreement and disagreement between:
+    - **VADER labels (threshold-based)**  
+    - **spaCy labels (ML-based)**  
+    Discover where simple rule-based and learned models diverge.
+
+    ### **🧭 Title Explorer**  
+    Search for any show or movie and view:
+    - TMDB poster  
+    - Sentiment details  
+    - Combined review text  
+    - Metadata and NLP insights  
+
+    ### **⚙️ Ingest & Score**  
+    Run the entire pipeline manually from inside the app.
+    You can also upload your own CSV to score new text using the trained spaCy model.
+
+    ### **🎯 Recommender Engine**  
+    A keyword- and genre-based recommender that lets you find similar Netflix titles.
+
+    ### **📊 Visualizations**  
+    Interactive Plotly charts generated from the cleaned Netflix dataset:
+    - Top genres  
+    - Ratings table  
+    - Country-level patterns  
+    """)
+
+    st.markdown("---")
+
+    # Optional KPIs — you can keep or remove these
     df = loadEnriched(ENRICHED_PATH)
-    if df is None or df.empty:
-        st.info("No enriched dataset yet. Use the **Ingest & Score** tab (or sidebar buttons) to create it.")
-    else:
-        # KPIs
+    if df is not None and not df.empty:
+        st.markdown("## 📈 Dataset Summary")
         total_titles = len(df)
         pos_rate = (df["spacy_label"] == "POSITIVE").mean() if "spacy_label" in df else 0.0
         avg_vader = df["vader_compound"].mean() if "vader_compound" in df else 0.0
-        most_reviewed = None
-        if "review_join" in df.columns:
-            review_counts = df["review_join"].fillna("").astype(str).apply(lambda s: 0 if not s else s.count(" || ") + 1)
-            if len(review_counts):
-                idx = review_counts.idxmax()
-                most_reviewed = df.loc[idx, "title"]
 
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: kpiCard("Titles scored", f"{total_titles:,}")
+        c1, c2, c3 = st.columns(3)
+        with c1: kpiCard("Titles Scored", f"{total_titles:,}")
         with c2: kpiCard("spaCy % Positive", f"{pos_rate*100:,.1f}%")
-        with c3: kpiCard("Avg VADER compound", f"{avg_vader:,.3f}")
-        with c4: kpiCard("Most reviewed", most_reviewed or "—")
+        with c3: kpiCard("Avg VADER Compound", f"{avg_vader:,.3f}")
 
-        st.markdown("### Highlights")
+        st.markdown("### 📉 Sentiment Distribution")
         left, right = st.columns(2)
         with left:
             try:
                 fig = plotLabelCounts(df, which="spacy_label")
                 st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
+            except:
+                st.warning("Plot error.")
+
         with right:
             try:
                 scatter = plotVaderVsSpacy(df, textCol="nlp_text")
                 st.plotly_chart(scatter, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Chart error: {e}")
+            except:
+                st.warning("Plot error.")
+    else:
+        st.info("No enriched dataset found. Run the ingestion pipeline to begin.")
+
 
 # ---------- Explore ----------
 with tabs[1]:
@@ -456,4 +542,5 @@ with tabs[6]:
     
     
     
+
     
