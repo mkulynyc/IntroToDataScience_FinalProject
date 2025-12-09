@@ -73,7 +73,9 @@ def loadEnriched(path: str) -> Optional[pd.DataFrame]:
             lambda s: [g.strip() for g in s.split(",")] if s else []
         )
         # Extract primary genre (first genre in the list)
-        df["primary_genre"] = df["genres_list"].apply(lambda lst: lst[0] if lst else "Unknown")
+        df["primary_genre"] = df["genres_list"].apply(
+            lambda lst: lst[0] if lst else "Unknown"
+        )
     else:
         df["genres_list"] = [[] for _ in range(len(df))]
         df["primary_genre"] = "Unknown"
@@ -110,7 +112,11 @@ def fetchPosterPath(title: str, year: Optional[int], kind: str) -> Optional[str]
         params = {"api_key": key, "query": title}
         if year:
             params["year" if kind == "movie" else "first_air_date_year"] = int(year)
-        r = requests.get(f"https://api.themoviedb.org/3/search/{kind}", params=params, timeout=12)
+        r = requests.get(
+            f"https://api.themoviedb.org/3/search/{kind}",
+            params=params,
+            timeout=12,
+        )
         r.raise_for_status()
         results = r.json().get("results", [])
         if not results:
@@ -140,10 +146,10 @@ def badge(text: str, tone: str = "neutral"):
     )
 
 # -------------------------------------------------------
-# Description Analyzer helpers
+# Description Analyzer helpers (NEW VERSION)
 # -------------------------------------------------------
 def analyze_emotion(text):
-    """Analyze emotion using TextBlob."""
+    """Analyze emotion using TextBlob"""
     try:
         blob = TextBlob(str(text))
         polarity = blob.sentiment.polarity
@@ -170,7 +176,7 @@ def analyze_emotion(text):
 
 
 def analyze_readability(text):
-    """Analyze readability using textstat."""
+    """Analyze readability using textstat"""
     try:
         score = textstat.flesch_reading_ease(str(text))
 
@@ -229,60 +235,76 @@ def run_description_analysis(df: pd.DataFrame) -> pd.DataFrame:
 def description_analyzer_tab():
     st.header("📝 Description Analyzer")
 
-    st.write("Upload a CSV with a **description** column to analyze sentiment & readability.")
+    st.write("Analyzing descriptions from **netflix_titles.csv**")
 
-    uploaded = st.file_uploader("Upload CSV", type=["csv"], key="description_analyzer_csv_uploader")
-
-    if uploaded:
-        df = pd.read_csv(uploaded)
-
-        if "description" not in df.columns:
-            st.error("Your CSV must contain a 'description' column.")
+    # Load the default Netflix CSV
+    df = None
+    if os.path.exists(NETFLIX_PATH):
+        try:
+            df = pd.read_csv(NETFLIX_PATH)
+            st.success(f"✅ Loaded {len(df)} rows from {NETFLIX_PATH}")
+        except Exception as e:
+            st.error(f"Error loading {NETFLIX_PATH}: {e}")
             return
+    else:
+        st.error(f"File not found: {NETFLIX_PATH}")
+        return
 
-        st.success(f"Loaded {len(df)} rows!")
+    if "description" not in df.columns:
+        st.error("The CSV must contain a 'description' column.")
+        return
 
-        if st.button("Run Analysis", type="primary"):
+    if st.button("Run Analysis", type="primary"):
+        with st.spinner("Analyzing descriptions..."):
             analyzed = run_description_analysis(df)
 
-            st.success("Analysis complete!")
-            st.subheader("Preview")
-            st.dataframe(analyzed.head())
+        st.success("Analysis complete!")
+        st.subheader("Preview")
+        st.dataframe(analyzed.head())
 
-            # Sentiment chart
-            st.subheader("Sentiment Polarity Distribution")
-            fig1 = px.histogram(analyzed, x="description_emotion_polarity")
-            fig1.update_traces(marker=dict(line=dict(color="white", width=2)))
-            st.plotly_chart(fig1, use_container_width=True, key="desc_sentiment_chart")
+        # Sentiment chart
+        st.subheader("Sentiment Polarity Distribution")
+        fig1 = px.histogram(analyzed, x="description_emotion_polarity")
+        fig1.update_traces(marker=dict(line=dict(color="white", width=2)))
+        st.plotly_chart(fig1, use_container_width=True, key="desc_sentiment_chart")
 
-            # Readability chart
-            st.subheader("Readability Score Distribution")
-            fig2 = px.histogram(analyzed, x="description_readability_score")
-            fig2.update_traces(marker=dict(line=dict(color="white", width=2)))
-            st.plotly_chart(fig2, use_container_width=True, key="desc_readability_chart")
+        # Readability chart
+        st.subheader("Readability Score Distribution")
+        fig2 = px.histogram(analyzed, x="description_readability_score")
+        fig2.update_traces(marker=dict(line=dict(color="white", width=2)))
+        st.plotly_chart(fig2, use_container_width=True, key="desc_readability_chart")
 
-            csv = analyzed.to_csv(index=False)
-            st.download_button("Download Results", csv, "description_analysis.csv")
+        csv = analyzed.to_csv(index=False)
+        st.download_button("Download Results", csv, "description_analysis.csv")
 
     st.markdown("---")
 
     # Single text analyzer
     st.subheader("Analyze a Single Description")
-    text = st.text_area("Enter description:")
 
-    if text:
+    with st.form(key="single_description_form"):
+        text = st.text_area("Enter description:", height=150)
+        submit_button = st.form_submit_button(
+            "Analyze",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submit_button and text:
         emo = analyze_emotion(text)
         read = analyze_readability(text)
 
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Sentiment", emo["sentiment"])
-            st.metric("Polarity", emo["polarity"])
-            st.metric("Subjectivity", emo["subjectivity"])
+            st.metric("Polarity", f"{emo['polarity']:.3f}")
+            st.metric("Subjectivity", f"{emo['subjectivity']:.3f}")
 
         with col2:
             st.metric("Reading Level", read["category"])
-            st.metric("Score", read["score"])
+            st.metric("Score", f"{read['score']:.1f}")
+    elif submit_button and not text:
+        st.warning("Please enter a description to analyze.")
 
 # =========================
 # Sidebar (pipeline actions)
@@ -291,7 +313,9 @@ with st.sidebar:
     st.header("Pipeline")
     st.caption("Fetch → Enrich/Score → Explore")
     fetch_btn = st.button("🔄 Fetch TMDB Reviews (append)", use_container_width=True)
-    score_btn = st.button("⚙️ Enrich + Score (VADER + spaCy)", use_container_width=True)
+    score_btn = st.button(
+        "⚙️ Enrich + Score (VADER + spaCy)", use_container_width=True
+    )
 
     st.markdown("---")
     st.header("spaCy Evaluation")
@@ -304,7 +328,9 @@ with st.sidebar:
                     labelCol="label",
                     modelPath=SPACY_MODEL_PATH,
                 )
-                st.success(f"Accuracy: {m['accuracy']:.3f} | Macro-F1: {m['macro_f1']:.3f}")
+                st.success(
+                    f"Accuracy: {m['accuracy']:.3f} | Macro-F1: {m['macro_f1']:.3f}"
+                )
                 with st.expander("Confusion matrix"):
                     st.write("Labels:", m["confusion_matrix_labels"])
                     st.write(m["confusion_matrix"])
@@ -314,7 +340,10 @@ with st.sidebar:
             st.warning("data/test_reviews.csv not found.")
 
     st.markdown("---")
-    st.caption("Tip: set your TMDB API key in `.streamlit/secrets.toml` or TMDB_API_KEY env.")
+    st.caption(
+        "Tip: set your TMDB API key in `.streamlit/secrets.toml` or TMDB_API_KEY env."
+    )
+
 
 # Run CLI scripts with feedback
 def runScript(cmd: str):
@@ -336,20 +365,22 @@ if fetch_btn:
         st.error("Missing data/netflix_titles.csv.")
     else:
         runScript(
-            f'python "scripts/fetch_tmdb_reviews.py" --netflix "{NETFLIX_PATH}" '
-            f'--output "{REVIEWS_PATH}" --limit 300'
+            f'python "scripts/fetch_tmdb_reviews.py" '
+            f'--netflix "{NETFLIX_PATH}" --output "{REVIEWS_PATH}" --limit 300'
         )
 
 if score_btn:
     if not os.path.exists(NETFLIX_PATH):
         st.error("Missing data/netflix_titles.csv.")
     elif not os.path.exists(REVIEWS_PATH):
-        st.error("Missing data/reviews_raw.csv — click the sidebar **Fetch TMDB Reviews** first.")
+        st.error(
+            "Missing data/reviews_raw.csv — click the sidebar **Fetch TMDB Reviews** first."
+        )
     else:
         runScript(
-            f'python "scripts/enrich_and_score.py" --netflix "{NETFLIX_PATH}" '
-            f'--reviews "{REVIEWS_PATH}" --output "{ENRICHED_PATH}" '
-            f'--spacyModel "{SPACY_MODEL_PATH}"'
+            f'python "scripts/enrich_and_score.py" '
+            f'--netflix "{NETFLIX_PATH}" --reviews "{REVIEWS_PATH}" '
+            f'--output "{ENRICHED_PATH}" --spacyModel "{SPACY_MODEL_PATH}"'
         )
 
 # =========================
@@ -361,11 +392,10 @@ tabs = st.tabs(
     [
         "📊 Overview",
         "🔎 Explore",
-        "🧠 NLP Sentiment Lab",
+        "⚖️ NLP",
         "🧭 Title Explorer",
         "🎯 Recommender Engine",
-        "📈 Statistics DK",
-        "📝 Description Analyzer",
+        "📈 Statistics",
     ]
 )
 
@@ -496,7 +526,7 @@ with tabs[0]:
 with tabs[1]:
     df = loadEnriched(ENRICHED_PATH)
     if df is None or df.empty:
-        st.info("Create an enriched dataset first (use the sidebar pipeline).")
+        st.info("Create an enriched dataset first.")
     else:
         st.subheader("Sentiment Filters")
         c1, c2, c3, c4 = st.columns(4)
@@ -507,13 +537,17 @@ with tabs[1]:
             types_opt = ["(all)"] + getUniqueSorted(df["type"])
             kind = st.selectbox("Type", types_opt)
         with c3:
-            spacy_label = st.selectbox("spaCy label", ["(all)", "POSITIVE", "NEGATIVE"])
+            spacy_label = st.selectbox(
+                "spaCy label", ["(all)", "POSITIVE", "NEGATIVE"]
+            )
         with c4:
             min_conf = st.slider("Min spaCy POS prob", 0.0, 1.0, 0.0, 0.01)
 
         # Genres (multi-select) if present
         genres_flat = (
-            sorted({g for lst in df["genres_list"] for g in lst}) if "genres_list" in df.columns else []
+            sorted({g for lst in df["genres_list"] for g in lst})
+            if "genres_list" in df.columns
+            else []
         )
         selected_genres = st.multiselect("Genres (any)", genres_flat)
 
@@ -527,7 +561,9 @@ with tabs[1]:
         if min_conf > 0:
             mask &= df["spacy_pos_prob"] >= min_conf
         if selected_genres:
-            mask &= df["genres_list"].apply(lambda lst: any(g in lst for g in selected_genres))
+            mask &= df["genres_list"].apply(
+                lambda lst: any(g in lst for g in selected_genres)
+            )
 
         view = df[mask].copy()
         st.caption(f"Showing {len(view):,} of {len(df):,} rows")
@@ -552,13 +588,17 @@ with tabs[1]:
         with colA:
             try:
                 fig1 = plotVaderVsSpacy(view, textCol="nlp_text")
-                st.plotly_chart(fig1, use_container_width=True, key="explore_vader_spacy")
+                st.plotly_chart(
+                    fig1, use_container_width=True, key="explore_vader_spacy"
+                )
             except Exception as e:
                 st.warning(f"Chart error: {e}")
         with colB:
             try:
                 fig2 = plotLabelCounts(view, which="spacy_label")
-                st.plotly_chart(fig2, use_container_width=True, key="explore_label_counts")
+                st.plotly_chart(
+                    fig2, use_container_width=True, key="explore_label_counts"
+                )
             except Exception as e:
                 st.warning(f"Chart error: {e}")
 
@@ -582,7 +622,9 @@ with tabs[1]:
 
         # Ratings table with year slider
         st.subheader("🎬 Ratings Table")
-        year_cutoff = st.slider("Minimum Release Year", min_value=1980, max_value=2025, value=2016)
+        year_cutoff = st.slider(
+            "Minimum Release Year", min_value=1980, max_value=2025, value=2016
+        )
         show_rating_table(df_clean, year=year_cutoff)
 
         # Top genres by country
@@ -591,16 +633,14 @@ with tabs[1]:
         top_n_genres = st.slider("Top N Genres", 3, 10, 5)
         plot_top_genres_by_country(df_clean, country=country, top_n=top_n_genres)
 
-    # ---- Advanced sentiment visualizations (from old Visualizations DK) ----
-    st.markdown("---")
-    st.subheader("🎨 Advanced Sentiment Visualizations")
-
+    # ---- Interactive visualizations using enriched data ----
     df_viz = loadEnriched(ENRICHED_PATH)
-    if df_viz is None or df_viz.empty:
-        st.info("No enriched dataset yet. Please create the enriched dataset first (sidebar pipeline).")
-    else:
-        st.subheader("🎭 Genre Analysis")
+    if df_viz is not None and not df_viz.empty:
+        st.markdown("---")
+        st.subheader("🎨 Interactive Visualizations")
 
+        # Genre analysis
+        st.subheader("🎭 Genre Analysis")
         if "primary_genre" in df_viz.columns:
             genre_counts = df_viz["primary_genre"].value_counts().head(15)
             fig_genres = px.bar(
@@ -627,22 +667,35 @@ with tabs[1]:
                         orientation="h",
                         title="Average Content Minutes by Genre",
                     )
-                    st.plotly_chart(fig_runtime, use_container_width=True, key="viz_genre_runtime")
+                    st.plotly_chart(
+                        fig_runtime, use_container_width=True, key="viz_genre_runtime"
+                    )
         else:
-            st.info("Genre metadata unavailable; showing runtime and region trends instead.")
+            st.info(
+                "Genre metadata unavailable; showing runtime and region trends instead."
+            )
 
+        # Country distribution
         if "country" in df_viz.columns:
             all_countries = []
             for countries in df_viz["country"].dropna():
                 if isinstance(countries, list):
                     all_countries.extend([c for c in countries if c])
                 elif isinstance(countries, str):
-                    all_countries.extend([c.strip() for c in countries.split(",") if c])
+                    all_countries.extend(
+                        [c.strip() for c in countries.split(",") if c]
+                    )
 
             if all_countries:
-                country_series = pd.Series(all_countries, dtype="object").astype(str).str.strip()
+                country_series = (
+                    pd.Series(all_countries, dtype="object")
+                    .astype(str)
+                    .str.strip()
+                )
                 exclusions = {"", "unknown", "nan", "none", "n/a"}
-                country_series = country_series[~country_series.str.casefold().isin(exclusions)]
+                country_series = country_series[
+                    ~country_series.str.casefold().isin(exclusions)
+                ]
                 if not country_series.empty:
                     country_counts = country_series.value_counts().head(15)
                     fig_countries = px.bar(
@@ -651,15 +704,20 @@ with tabs[1]:
                         orientation="h",
                         title="Top 15 Countries by Content Count",
                     )
-                    st.plotly_chart(fig_countries, use_container_width=True, key="viz_countries")
+                    st.plotly_chart(
+                        fig_countries, use_container_width=True, key="viz_countries"
+                    )
                 else:
                     st.info("Country information not available for visualization.")
             else:
                 st.info("Country information not available for visualization.")
 
+        # Release year vs Rating (content rating, not stars)
         if "release_year" in df_viz.columns and "rating" in df_viz.columns:
             trend_df = df_viz.copy()
-            trend_df["release_year"] = pd.to_numeric(trend_df["release_year"], errors="coerce")
+            trend_df["release_year"] = pd.to_numeric(
+                trend_df["release_year"], errors="coerce"
+            )
             trend_df = trend_df.dropna(subset=["release_year", "rating"])
 
             if not trend_df.empty:
@@ -671,10 +729,14 @@ with tabs[1]:
                 )
                 rating_counts["rating"] = rating_counts["rating"].astype(str)
                 rating_counts = rating_counts[
-                    ~rating_counts["rating"].str.casefold().isin({"unknown", "nan", "none", ""})
+                    ~rating_counts["rating"]
+                    .str.casefold()
+                    .isin({"unknown", "nan", "none", ""})
                 ]
                 if not rating_counts.empty:
-                    rating_counts = rating_counts.sort_values(["release_year", "rating"])
+                    rating_counts = rating_counts.sort_values(
+                        ["release_year", "rating"]
+                    )
                     fig_rating_trend = px.line(
                         rating_counts,
                         x="release_year",
@@ -682,7 +744,10 @@ with tabs[1]:
                         color="rating",
                         markers=True,
                         title="Content Rating Trend by Release Year",
-                        labels={"count": "Number of Titles", "release_year": "Release Year"},
+                        labels={
+                            "count": "Number of Titles",
+                            "release_year": "Release Year",
+                        },
                     )
                     st.plotly_chart(
                         fig_rating_trend,
@@ -694,24 +759,7 @@ with tabs[1]:
             else:
                 st.info("Insufficient release year data for rating trends.")
 
-        if "type" in df_viz.columns and "spacy_label" in df_viz.columns:
-            st.subheader("📺 Content Type vs Sentiment")
-
-            type_sentiment = (
-                df_viz.groupby(["type", "spacy_label"]).size().reset_index(name="count")
-            )
-
-            fig_type_sentiment = px.bar(
-                type_sentiment,
-                x="type",
-                y="count",
-                color="spacy_label",
-                title="Content Type by Sentiment",
-                labels={"count": "Number of Titles", "type": "Content Type"},
-                barmode="group",
-            )
-            st.plotly_chart(fig_type_sentiment, use_container_width=True, key="viz_type_sentiment")
-
+        # VADER score distribution
         if "vader_compound" in df_viz.columns:
             st.subheader("📊 VADER Score Distribution")
 
@@ -720,70 +768,91 @@ with tabs[1]:
                 x="vader_compound",
                 nbins=50,
                 title="Distribution of VADER Compound Scores",
-                labels={"vader_compound": "VADER Compound Score", "count": "Number of Titles"},
+                labels={
+                    "vader_compound": "VADER Compound Score",
+                    "count": "Number of Titles",
+                },
             )
             fig_vader.update_traces(
                 marker=dict(color="#564d4d", line=dict(color="white", width=1))
             )
             st.plotly_chart(fig_vader, use_container_width=True, key="viz_vader_dist")
 
-# ---------- NLP Sentiment Lab (Model Compare + Sentiment Summary by Genre) ----------
+# ---------- NLP ----------
 with tabs[2]:
-    df = loadEnriched(ENRICHED_PATH)
-    if df is None or df.empty:
-        st.info("Create an enriched dataset first (use the sidebar pipeline).")
-    else:
-        # --- Model agreement section ---
-        st.subheader("Agreement & Thresholds")
-        c1, c2 = st.columns(2)
-        with c1:
-            pos_thresh = st.slider("VADER positive threshold", 0.0, 0.5, 0.05, 0.01)
-        with c2:
-            neg_thresh = st.slider("VADER negative threshold", -0.5, 0.0, -0.05, 0.01)
+    nlp_tabs = st.tabs(
+        ["⚖️ Model Compare", "📝 Description Analyzer", "🏆 Top Titles", "📊 Genre Summary"]
+    )
 
-        # recompute VADER label on the fly for comparison
-        vlab = pd.Series("NEUTRAL", index=df.index)
-        vlab = vlab.mask(df["vader_compound"] >= pos_thresh, "POSITIVE")
-        vlab = vlab.mask(df["vader_compound"] <= neg_thresh, "NEGATIVE")
+    # Model Compare sub-tab
+    with nlp_tabs[0]:
+        df = loadEnriched(ENRICHED_PATH)
+        if df is None or df.empty:
+            st.info("Create an enriched dataset first.")
+        else:
+            st.subheader("Agreement & Thresholds")
+            c1, c2 = st.columns(2)
+            with c1:
+                pos_thresh = st.slider(
+                    "VADER positive threshold", 0.0, 0.5, 0.05, 0.01
+                )
+            with c2:
+                neg_thresh = st.slider(
+                    "VADER negative threshold", -0.5, 0.0, -0.05, 0.01
+                )
 
-        agree = vlab == df["spacy_label"]
-        st.write(f"**Agreement rate:** {(agree.mean() * 100):.1f}%  (n={len(df)})")
+            # recompute VADER label on the fly for comparison
+            vlab = pd.Series("NEUTRAL", index=df.index)
+            vlab = vlab.mask(df["vader_compound"] >= pos_thresh, "POSITIVE")
+            vlab = vlab.mask(df["vader_compound"] <= neg_thresh, "NEGATIVE")
 
-        # Show disagreements table
-        st.markdown("#### Disagreements")
-        dis = df[~agree].copy()
-        st.dataframe(
-            dis[
-                [
-                    "title",
-                    "type",
-                    "release_year",
-                    "spacy_label",
-                    "spacy_pos_prob",
-                    "vader_compound",
-                    "vader_label",
-                ]
-            ].head(300)
-        )
+            agree = vlab == df["spacy_label"]
+            st.write(f"**Agreement rate:** {(agree.mean() * 100):.1f}%  (n={len(df)})")
 
-        st.markdown("#### VADER vs spaCy")
-        try:
-            scatter = plotVaderVsSpacy(df, textCol="nlp_text")
-            st.plotly_chart(scatter, use_container_width=True, key="model_compare_vader_spacy")
-        except Exception as e:
-            st.warning(f"Chart error: {e}")
+            # Show disagreements table
+            st.markdown("#### Disagreements")
+            dis = df[~agree].copy()
+            st.dataframe(
+                dis[
+                    [
+                        "title",
+                        "type",
+                        "release_year",
+                        "spacy_label",
+                        "spacy_pos_prob",
+                        "vader_compound",
+                        "vader_label",
+                    ]
+                ].head(300)
+            )
 
-        # --- Sentiment Summary by Genre content moved here ---
-        st.markdown("---")
-        st.header("🧠 Sentiment Analysis Dashboard")
+            st.markdown("#### VADER vs spaCy")
+            try:
+                scatter = plotVaderVsSpacy(df, textCol="nlp_text")
+                st.plotly_chart(
+                    scatter,
+                    use_container_width=True,
+                    key="model_compare_vader_spacy",
+                )
+            except Exception as e:
+                st.warning(f"Chart error: {e}")
 
-        sub = st.tabs(["🏆 Top Titles", "📊 Genre Sentiment Summary"])
+    # Description Analyzer sub-tab
+    with nlp_tabs[1]:
+        description_analyzer_tab()
 
-        # ======= TOP TITLES =======
-        with sub[0]:
-            st.header("🏆 Top Positive & Negative Titles")
+    # Top Titles sub-tab (moved from Sentiment Summary by Genre tab)
+    with nlp_tabs[2]:
+        df = loadEnriched(ENRICHED_PATH)
+        st.header("🏆 Top Positive & Negative Titles")
+        if df is None or df.empty:
+            st.info(
+                "No enriched dataset yet. Use the **sidebar pipeline buttons** to create it."
+            )
+        else:
             col1, col2, col3 = st.columns([2, 2, 1])
 
+            # Filters
             with col1:
                 genres_opts = (
                     sorted({g for lst in df.get("genres_list", []) for g in lst})
@@ -791,7 +860,6 @@ with tabs[2]:
                     else []
                 )
                 selected_genres = st.multiselect("Select genres", genres_opts)
-
             with col2:
                 type_opts = (
                     ["(all)"] + sorted(df["type"].dropna().unique())
@@ -799,9 +867,12 @@ with tabs[2]:
                     else ["(all)"]
                 )
                 selected_type = st.selectbox("Type filter", type_opts)
-
             with col3:
-                max_titles = int(df["title"].nunique()) if "title" in df.columns else len(df)
+                max_titles = (
+                    int(df["title"].nunique())
+                    if "title" in df.columns
+                    else len(df)
+                )
                 top_n = st.slider(
                     "Top N titles",
                     min_value=1,
@@ -811,18 +882,26 @@ with tabs[2]:
 
             # Base frame
             s = df.copy()
-            s["spacy_pos_prob"] = s.get("spacy_pos_prob", pd.Series([0.0] * len(s))).fillna(0.0)
-            s["vader_compound"] = s.get("vader_compound", pd.Series([0.0] * len(s))).fillna(0.0)
+            s["spacy_pos_prob"] = s.get(
+                "spacy_pos_prob", pd.Series([0.0] * len(s))
+            ).fillna(0.0)
+            s["vader_compound"] = s.get(
+                "vader_compound", pd.Series([0.0] * len(s))
+            ).fillna(0.0)
             s["vader_norm"] = (s["vader_compound"] + 1.0) / 2.0
             s["combined_score"] = s["spacy_pos_prob"] + s["vader_norm"]
 
             # Apply filters
             if selected_genres and "genres_list" in s.columns:
-                s = s[s["genres_list"].apply(lambda lst: any(g in lst for g in selected_genres))]
+                s = s[
+                    s["genres_list"].apply(
+                        lambda lst: any(g in lst for g in selected_genres)
+                    )
+                ]
             if selected_type != "(all)":
                 s = s[s["type"] == selected_type]
 
-            # Collapse to one row per title, preferring titles with more reviews if available
+            # Collapse to one row per title, preferring more reviews
             if "review_join" in s.columns:
                 s["review_count"] = (
                     s["review_join"]
@@ -889,6 +968,7 @@ with tabs[2]:
             )
             fign.update_layout(yaxis={"categoryorder": "total ascending"})
 
+            # Display charts and tables
             col_left, col_right = st.columns(2)
 
             with col_left:
@@ -935,10 +1015,15 @@ with tabs[2]:
                     file_name="top_negative_titles.csv",
                 )
 
-        # ======= GENRE SENTIMENT SUMMARY =======
-        with sub[1]:
-            st.header("📊 Sentiment Summary by Genre")
-
+    # Genre Sentiment Summary sub-tab
+    with nlp_tabs[3]:
+        df = loadEnriched(ENRICHED_PATH)
+        st.header("📊 Sentiment Summary by Genre")
+        if df is None or df.empty:
+            st.info(
+                "No enriched dataset yet. Use the **sidebar pipeline buttons** to create it."
+            )
+        else:
             type_opts = (
                 ["(all)"] + sorted(df["type"].dropna().unique())
                 if "type" in df.columns
@@ -1019,12 +1104,14 @@ with tabs[2]:
 with tabs[3]:
     df = loadEnriched(ENRICHED_PATH)
     if df is None or df.empty:
-        st.info("Create an enriched dataset first (use the sidebar pipeline).")
+        st.info("Create an enriched dataset first.")
     else:
         st.subheader("Find a title")
         query = st.text_input("Search title", placeholder="Start typing…")
         if query:
-            sub = df[df["title"].str.contains(query, case=False, na=False)].head(25).copy()
+            sub = df[df["title"].str.contains(query, case=False, na=False)].head(
+                25
+            ).copy()
         else:
             sub = df.head(25).copy()
 
@@ -1033,7 +1120,9 @@ with tabs[3]:
                 top = st.columns([1, 3, 2])
                 # Poster
                 with top[0]:
-                    poster = fetchPosterPath(row["title"], row.get("release_year"), row.get("type", "movie"))
+                    poster = fetchPosterPath(
+                        row["title"], row.get("release_year"), row.get("type", "movie")
+                    )
                     if poster:
                         st.image(f"{TMDB_IMAGE_BASE}{poster}")
                     else:
@@ -1046,16 +1135,26 @@ with tabs[3]:
                     # badges
                     badge(
                         f"spaCy: {row.get('spacy_label', '?')}",
-                        "positive" if row.get("spacy_label") == "POSITIVE" else "negative",
+                        "positive"
+                        if row.get("spacy_label") == "POSITIVE"
+                        else "negative",
                     )
-                    st.write(f"spaCy pos prob: {row.get('spacy_pos_prob', 0.0):.3f}")
+                    st.write(
+                        f"spaCy pos prob: {row.get('spacy_pos_prob', 0.0):.3f}"
+                    )
                     badge(
                         f"VADER: {row.get('vader_label', '?')}",
                         "positive"
                         if row.get("vader_label") == "POSITIVE"
-                        else ("negative" if row.get("vader_label") == "NEGATIVE" else "neutral"),
+                        else (
+                            "negative"
+                            if row.get("vader_label") == "NEGATIVE"
+                            else "neutral"
+                        ),
                     )
-                    st.write(f"VADER compound: {row.get('vader_compound', 0.0):.3f}")
+                    st.write(
+                        f"VADER compound: {row.get('vader_compound', 0.0):.3f}"
+                    )
                 # Text
                 with top[2]:
                     txt = str(row.get("nlp_text", "")).strip()
@@ -1079,9 +1178,10 @@ with tabs[4]:
         df_clean, _ = cleanNetflixData(df_raw)
         df_clean = add_genres_list(df_clean)
 
-        st.subheader("Recommender Search Engine")
+        st.subheader("🎯 Recommender Search Engine")
         st.write(
-            "Write keywords and select genres you are interested in, and choose if you want **all** or **any** of these in the search."
+            "Write keywords and select genres you are interested in, "
+            "and choose if you want **all** or **any** of these in the search."
         )
 
         col1, col2 = st.columns(2)
@@ -1091,7 +1191,9 @@ with tabs[4]:
         with col2:
             selected_genres = st.multiselect(
                 "Genres",
-                options=sorted(set(g for sublist in df_clean["genres_list"] for g in sublist if g)),
+                options=sorted(
+                    set(g for sublist in df_clean["genres_list"] for g in sublist if g)
+                ),
             )
             genre_mode = st.radio("Genre Match Mode", ["any", "all"])
 
@@ -1159,7 +1261,9 @@ with tabs[4]:
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    cluster_counts = pd.Series(cluster_labels).value_counts().sort_index()
+                    cluster_counts = (
+                        pd.Series(cluster_labels).value_counts().sort_index()
+                    )
                     fig_clusters = px.bar(
                         x=cluster_counts.index,
                         y=cluster_counts.values,
@@ -1195,13 +1299,13 @@ with tabs[4]:
                 cluster_stats = (
                     features_df.groupby("cluster")
                     .agg(
-                        vader_compound_mean=("vader_compound", "mean"),
-                        vader_compound_std=("vader_compound", "std"),
-                        spacy_pos_prob_mean=("spacy_pos_prob", "mean"),
-                        spacy_pos_prob_std=("spacy_pos_prob", "std"),
-                        release_year_mean=("release_year_numeric", "mean"),
-                        release_year_min=("release_year_numeric", "min"),
-                        release_year_max=("release_year_numeric", "max"),
+                        vader_mean=("vader_compound", "mean"),
+                        vader_std=("vader_compound", "std"),
+                        spacy_mean=("spacy_pos_prob", "mean"),
+                        spacy_std=("spacy_pos_prob", "std"),
+                        year_mean=("release_year_numeric", "mean"),
+                        year_min=("release_year_numeric", "min"),
+                        year_max=("release_year_numeric", "max"),
                     )
                     .round(3)
                 )
@@ -1214,7 +1318,9 @@ with tabs[4]:
                     key="recommender_cluster_selector",
                 )
 
-                cluster_indices = features_df[features_df["cluster"] == selected_cluster].index
+                cluster_indices = features_df[
+                    features_df["cluster"] == selected_cluster
+                ].index
                 cluster_sample = df_enriched.loc[cluster_indices].head(10)
 
                 display_cols = ["title"]
@@ -1239,9 +1345,37 @@ with tabs[4]:
 with tabs[5]:
     df = loadEnriched(ENRICHED_PATH)
     if df is None or df.empty:
-        st.info("No enriched dataset yet. Please create the enriched dataset first (sidebar pipeline).")
+        st.info(
+            "No enriched dataset yet. Please create the enriched dataset first (sidebar pipeline)."
+        )
     else:
         st.subheader("📈 Statistical Analysis DK")
+
+        # Time Series in Stats DK (moved from Time Series tab)
+        st.subheader("⏰ Time Series - Content by Release Year")
+        if "release_year" in df.columns:
+            release_years = (
+                pd.to_numeric(df["release_year"], errors="coerce")
+                .dropna()
+                .astype(int)
+            )
+            if not release_years.empty:
+                year_counts = release_years.value_counts().sort_index()
+
+                fig_trend = px.line(
+                    x=year_counts.index,
+                    y=year_counts.values,
+                    title="Netflix Content by Release Year",
+                    labels={"x": "Release Year", "y": "Number of Titles"},
+                )
+                fig_trend.update_traces(line=dict(color="#e50914", width=2))
+                st.plotly_chart(
+                    fig_trend,
+                    use_container_width=True,
+                    key="stats_timeseries_releases",
+                )
+            else:
+                st.info("Release year data not available for time series analysis.")
 
         # Try to load and merge runtime data if available
         runtime_path = "netflix_movies_tv_runtime.csv"
@@ -1255,12 +1389,11 @@ with tabs[5]:
                         how="left",
                         suffixes=("", "_runtime"),
                     )
-                    st.success(f"✅ Merged runtime data from {runtime_path}")
             except Exception as e:
                 st.warning(f"Could not load runtime data: {e}")
 
-        # Descriptive statistics - Release Year
-        st.subheader("🎬 Content Release Year Statistics")
+        # Release Year stats
+        st.subheader("🎬 Release Year Statistics")
         if "release_year" in df.columns:
             release_year = pd.to_numeric(df["release_year"], errors="coerce").dropna()
             if not release_year.empty:
@@ -1268,42 +1401,37 @@ with tabs[5]:
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.write("**Release Year Statistics**")
+                    st.write("**Release Year Summary**")
                     st.dataframe(year_stats.round(0))
-
                 with col2:
                     fig_year_hist = px.histogram(
                         release_year,
                         nbins=20,
                         title="Release Year Distribution",
-                        labels={"value": "Release Year", "count": "Number of Titles"},
+                        labels={
+                            "value": "Release Year",
+                            "count": "Number of Titles",
+                        },
                     )
-                    fig_year_hist.update_traces(marker=dict(line=dict(color="white", width=1)))
-                    st.plotly_chart(fig_year_hist, use_container_width=True, key="stats_year_hist")
+                    fig_year_hist.update_traces(
+                        marker=dict(line=dict(color="white", width=1))
+                    )
+                    st.plotly_chart(
+                        fig_year_hist,
+                        use_container_width=True,
+                        key="stats_year_hist",
+                    )
             else:
                 st.info("Release year data not available after processing.")
 
-        # Time-series style plot: content by release year
-        if "release_year" in df.columns:
-            st.subheader("⏰ Netflix Content by Release Year")
-            release_years = pd.to_numeric(df["release_year"], errors="coerce").dropna().astype(int)
-            if not release_years.empty:
-                year_counts = release_years.value_counts().sort_index()
-                fig_trend = px.line(
-                    x=year_counts.index,
-                    y=year_counts.values,
-                    title="Netflix Content by Release Year",
-                    labels={"x": "Release Year", "y": "Number of Titles"},
-                )
-                fig_trend.update_traces(line=dict(color="#e50914", width=2))
-                st.plotly_chart(fig_trend, use_container_width=True, key="stats_releases_over_time")
-
         # Rating distribution
-        st.subheader("⭐ Rating Analysis")
+        st.subheader("⭐ Rating Analysis (TMDB-style ratings)")
         rating_col = None
 
         for col in df.columns:
-            if "rating" in col.lower() and ("_runtime" in col.lower() or "stars" in col.lower()):
+            if "rating" in col.lower() and (
+                "_runtime" in col.lower() or "stars" in col.lower()
+            ):
                 try:
                     test_vals = pd.to_numeric(df[col], errors="coerce").dropna()
                     if len(test_vals) > 0 and test_vals.max() <= 10:
@@ -1329,8 +1457,6 @@ with tabs[5]:
 
         if rating_col:
             try:
-                st.write(f"**Using column: `{rating_col}`**")
-
                 ratings = pd.to_numeric(df[rating_col], errors="coerce").dropna()
 
                 if len(ratings) > 0:
@@ -1339,15 +1465,20 @@ with tabs[5]:
                         nbins=20,
                         title="TMDB Rating Distribution (0-10 scale)",
                         labels={"x": "Rating (0-10)", "y": "Number of Titles"},
-                        color_discrete_sequence=["#1f77b4"],
                     )
-                    fig_rating.update_traces(marker=dict(line=dict(color="white", width=1)))
+                    fig_rating.update_traces(
+                        marker=dict(line=dict(color="white", width=1))
+                    )
                     fig_rating.update_layout(
                         xaxis_title="Rating (0-10)",
                         yaxis_title="Number of Titles",
                         showlegend=False,
                     )
-                    st.plotly_chart(fig_rating, use_container_width=True, key="stats_rating_hist")
+                    st.plotly_chart(
+                        fig_rating,
+                        use_container_width=True,
+                        key="stats_rating_hist",
+                    )
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -1367,12 +1498,150 @@ with tabs[5]:
                 st.write(rating_cols)
                 st.write("\nAll columns:")
                 st.write(list(df.columns))
-            st.info("No TMDB rating column found. Please ensure netflix_movies_tv_runtime.csv is loaded correctly.")
+            st.info(
+                "No TMDB rating column found. Please ensure netflix_movies_tv_runtime.csv is loaded correctly."
+            )
 
-# ---------- Description Analyzer ----------
-with tabs[6]:
-    description_analyzer_tab()
+        # Sentiment Analysis Statistics
+        st.subheader("😊 Sentiment Analysis Statistics")
 
+        if "vader_compound" in df.columns or "spacy_pos_prob" in df.columns:
+            col1, col2 = st.columns(2)
 
+            # VADER Statistics
+            if "vader_compound" in df.columns:
+                with col1:
+                    st.write("**VADER Compound Score Statistics**")
+                    vader_scores = df["vader_compound"].dropna()
 
+                    if not vader_scores.empty:
+                        vader_stats = vader_scores.describe()
+                        st.dataframe(vader_stats.round(3))
 
+                        fig_vader = px.histogram(
+                            x=vader_scores,
+                            nbins=30,
+                            title="VADER Compound Score Distribution",
+                            labels={
+                                "x": "VADER Compound Score",
+                                "y": "Count",
+                            },
+                        )
+                        fig_vader.update_traces(
+                            marker=dict(
+                                color="#564d4d",
+                                line=dict(color="white", width=1),
+                            )
+                        )
+                        st.plotly_chart(
+                            fig_vader,
+                            use_container_width=True,
+                            key="stats_vader_dist",
+                        )
+
+                        if "vader_label" in df.columns:
+                            vader_label_counts = df["vader_label"].value_counts()
+                            fig_vader_labels = px.pie(
+                                values=vader_label_counts.values,
+                                names=vader_label_counts.index,
+                                title="VADER Sentiment Distribution",
+                                color=vader_label_counts.index,
+                                color_discrete_map={
+                                    "POSITIVE": "#2ca02c",
+                                    "NEGATIVE": "#d62728",
+                                    "NEUTRAL": "#ffbb78",
+                                },
+                            )
+                            st.plotly_chart(
+                                fig_vader_labels,
+                                use_container_width=True,
+                                key="stats_vader_labels",
+                            )
+
+            # spaCy Statistics
+            if "spacy_pos_prob" in df.columns:
+                with col2:
+                    st.write("**spaCy Positive Probability Statistics**")
+                    spacy_scores = df["spacy_pos_prob"].dropna()
+
+                    if not spacy_scores.empty:
+                        spacy_stats = spacy_scores.describe()
+                        st.dataframe(spacy_stats.round(3))
+
+                        fig_spacy = px.histogram(
+                            x=spacy_scores,
+                            nbins=30,
+                            title="spaCy Positive Probability Distribution",
+                            labels={
+                                "x": "spaCy Positive Probability",
+                                "y": "Count",
+                            },
+                        )
+                        fig_spacy.update_traces(
+                            marker=dict(
+                                color="#17becf",
+                                line=dict(color="white", width=1),
+                            )
+                        )
+                        st.plotly_chart(
+                            fig_spacy,
+                            use_container_width=True,
+                            key="stats_spacy_dist",
+                        )
+
+                        if "spacy_label" in df.columns:
+                            spacy_label_counts = df["spacy_label"].value_counts()
+                            fig_spacy_labels = px.pie(
+                                values=spacy_label_counts.values,
+                                names=spacy_label_counts.index,
+                                title="spaCy Sentiment Distribution",
+                                color=spacy_label_counts.index,
+                                color_discrete_map={
+                                    "POSITIVE": "#2ca02c",
+                                    "NEGATIVE": "#d62728",
+                                },
+                            )
+                            st.plotly_chart(
+                                fig_spacy_labels,
+                                use_container_width=True,
+                                key="stats_spacy_labels",
+                            )
+
+            # Sentiment Correlation
+            if "vader_compound" in df.columns and "spacy_pos_prob" in df.columns:
+                st.write("**Sentiment Score Correlation**")
+                correlation = (
+                    df[["vader_compound", "spacy_pos_prob"]].corr().iloc[0, 1]
+                )
+
+                col_a, col_b = st.columns([1, 2])
+                with col_a:
+                    st.metric("Correlation Coefficient", f"{correlation:.3f}")
+
+                    if abs(correlation) > 0.7:
+                        st.success("Strong correlation")
+                    elif abs(correlation) > 0.4:
+                        st.info("Moderate correlation")
+                    else:
+                        st.warning("Weak correlation")
+
+                with col_b:
+                    sample_size = min(1000, len(df))
+                    fig_corr = px.scatter(
+                        df.sample(sample_size),
+                        x="vader_compound",
+                        y="spacy_pos_prob",
+                        title="VADER vs spaCy Sentiment Correlation",
+                        labels={
+                            "vader_compound": "VADER Compound",
+                            "spacy_pos_prob": "spaCy Pos Prob",
+                        },
+                        opacity=0.5,
+                    )
+                    st.plotly_chart(
+                        fig_corr,
+                        use_container_width=True,
+                        key="stats_sentiment_corr",
+                    )
+        else:
+            st.info("Sentiment analysis columns not found in the dataset.")
