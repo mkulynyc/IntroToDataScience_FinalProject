@@ -386,7 +386,7 @@ if score_btn:
 # =========================
 # Tabs
 # =========================
-st.title("🎬 Netflix Sentiment Workbench (VADER + spaCy)")
+st.title("🎬 Netflix Sentimental Analysis")
 
 tabs = st.tabs(
     [
@@ -401,10 +401,10 @@ tabs = st.tabs(
 
 # ---------- Overview (README-style) ----------
 with tabs[0]:
-    st.markdown("# 📘 Netflix Sentiment Workbench")
+    st.markdown("# 📘 Netflix Sentimental Analysis")
     st.markdown(
         """
-    Welcome to the **Netflix Sentiment Workbench**, an interactive data exploration tool that combines:
+    Welcome to the **Netflix Sentimental Analysis Workbench**, an interactive data exploration tool that combines:
 
     - ⭐ **VADER** for rule-based sentiment scoring  
     - 🤖 **spaCy Text Classification** for machine-learned sentiment  
@@ -774,7 +774,7 @@ with tabs[1]:
                 },
             )
             fig_vader.update_traces(
-                marker=dict(color="#564d4d", line=dict(color="white", width=1))
+                marker=dict(color="#1f77b4", line=dict(color="white", width=1))
             )
             st.plotly_chart(fig_vader, use_container_width=True, key="viz_vader_dist")
 
@@ -1228,7 +1228,7 @@ with tabs[4]:
             and "spacy_pos_prob" in df_enriched.columns
             and "release_year" in df_enriched.columns
         ):
-            st.write("We cluster titles using VADER, spaCy, and release year.")
+            st.write("We cluster titles based on sentiment using VADER, spaCy, and release year.")
 
             cluster_df = df_enriched.copy()
             cluster_df["release_year_numeric"] = pd.to_numeric(
