@@ -774,7 +774,7 @@ with tabs[1]:
                 },
             )
             fig_vader.update_traces(
-                marker=dict(color="#564d4d", line=dict(color="white", width=1))
+                marker=dict(color="#1f77b4", line=dict(color="white", width=1))
             )
             st.plotly_chart(fig_vader, use_container_width=True, key="viz_vader_dist")
 
