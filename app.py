@@ -1171,6 +1171,7 @@ with tabs[3]:
 
 # ---------- Recommender Search Engine ----------
 with tabs[4]:
+    # Load Data
     df_raw = loadCsv(NETFLIX_PATH)
     if df_raw is None or df_raw.empty:
         st.info("Base Netflix CSV not found or empty.")
@@ -1186,6 +1187,7 @@ with tabs[4]:
 
         col1, col2 = st.columns(2)
         with col1:
+            # User inputs keywords
             keywords_input = st.text_input("Keywords (comma-separated)", value="school")
             keyword_mode = st.radio("Keyword Match Mode", ["any", "all"])
         with col2:
@@ -1198,18 +1200,24 @@ with tabs[4]:
             genre_mode = st.radio("Genre Match Mode", ["any", "all"])
 
         top_n = st.slider("Number of Recommendations", 1, 20, 10)
+        st.write("""The fuzzy match slider controls how strictly keywords must match the movie descriptions.
+             - **Higher values (closer to 100)** → only very close matches are included (e.g., 'color' matches 'color').
+             - **Lower values (closer to 50)** → looser matches are allowed (e.g., 'color' also matches 'colour' or 'colr').""")
+        
+        # Fuzzy match threshold slider
+        fuzzy_threshold = st.slider("Fuzzy match threshold", min_value=50, max_value=100, value=90)
 
         st.subheader("Recommended Titles")
         if st.button("Run Recommender"):
-            keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
+            keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
             results = run_recommender(
-                df_clean,
-                keywords,
-                selected_genres,
-                top_n,
-                keyword_mode,
-                genre_mode,
-            )
+                df_clean, 
+                keywords, 
+                selected_genres, 
+                top_n, 
+                keyword_mode, 
+                genre_mode, 
+                fuzzy_threshold=fuzzy_threshold)
             if results.empty:
                 st.warning("No matches found. Try different keywords or genres.")
             else:
