@@ -10,7 +10,7 @@ import plotly.express as px
 from rapidfuzz import fuzz
 
 ### Keyword fuzzy matching function
-def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=70):
+def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=90):
     """
     Filters movies whose description contains fuzzy matches of the keywords.
     - threshold: similarity score (0–100) for fuzzy matching
@@ -19,12 +19,12 @@ def keyword_match_fuzzy(df, keywords, match_mode='any', threshold=70):
         tokens = str(desc).lower().split()
         if match_mode == 'all':
             return all(
-                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                any(fuzz.ratio(k.lower(), token) >= threshold for token in tokens)
                 for k in keywords
             )
         else:
             return any(
-                any(fuzz.partial_ratio(k.lower(), token) >= threshold for token in tokens)
+                any(fuzz.ratio(k.lower(), token) >= threshold for token in tokens)
                 for k in keywords
             )
     return df[df['description'].apply(match_desc)]
@@ -46,7 +46,7 @@ def genre_filter(df, genre_list, match_mode='any'):
     return df[df['genres_list'].apply(match_genres)]
 
 ### Recommending top movies based on inputs
-def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mode='any', genre_match_mode='any'):
+def recommend_movies(df, keywords=None, genres=None, top_n=10, keyword_match_mode='any', genre_match_mode='any', fuzzy_threshold=70):
     """
     Recommends top-rated movies based on keyword and genre filters.
     Match modes: 'any' or 'all' for both keywords and genres.
@@ -86,16 +86,6 @@ def run_recommender(df, keywords, genres, top_n=10, keyword_match_mode='any', ge
         genres=genres,
         top_n=top_n,
         keyword_match_mode=keyword_match_mode,
-<<<<<<< HEAD
-<<<<<<< HEAD:engine.py
         genre_match_mode=genre_match_mode,
         fuzzy_threshold=fuzzy_threshold
     )
-=======
-        genre_match_mode=genre_match_mode
-=======
-        genre_match_mode=genre_match_mode,
-        fuzzy_threshold=fuzzy_threshold
->>>>>>> 3e16046742a893b1ab6ac163795b2dfce812e054
-    )
->>>>>>> c711ac0340657e6b7a61c11d29e5d050f72ede40:matt_engine.py
