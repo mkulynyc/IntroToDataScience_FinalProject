@@ -2,6 +2,9 @@
 
 A comprehensive Streamlit dashboard for analyzing Netflix content and audience sentiment using VADER and spaCy models. This project combines movie/TV show metadata with user reviews from TMDB (The Movie Database) to provide insights into content trends and viewer reactions.
 
+# App Link:
+https://introtodatasciencefinalproject-zvvaznzgerdexky9cmphbz.streamlit.app/
+
 ## 🎯 Features
 
 - **Sentiment Analysis Pipeline**
@@ -300,3 +303,4 @@ python scripts/run_inference.py --input "data/my_reviews.csv" --textCol "review_
 ---
 
 Created for INFO 501 Final Project (Fall 2025)
+
