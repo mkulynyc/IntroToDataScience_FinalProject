@@ -17,6 +17,7 @@ pandas
 numpy
 scikit-learn
 streamlit
+statsmodels
 textblob
 textstat
 transformers
